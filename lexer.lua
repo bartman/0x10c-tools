@@ -32,15 +32,9 @@ local charlit =
 local stringlit =
   P'L'^-1 * P'"' * (P'\\' * P(1) + (1 - S'\\"'))^0 * P'"'
 
-local scomment = P';' * (1 - P'\n')^0
+local literal = (numlit + charlit + stringlit)
 
-local lex_comment = scomment
-              / function(...) print('COMMENT', ...) end
-
-local lex_literal = (numlit + charlit + stringlit)
-              / function(...) print('LITERAL', ...) end
-
-local lex_comma = C( P"," ) / function(...) print('COMMA', ...) end
+local comment = P';' * (1 - P'\n')^0
 
 --local lex_variable = 
 
@@ -63,13 +57,9 @@ local op = (
   P"IFB"
 )
 
-local lex_op = C( op ) / function(...) print('OP', ...) end
-
 local sop = (
   P"JSR"
 )
-
-local lex_sop = C( sop ) / function(...) print('OP', ...) end
 
 local greg = (
   P"A" +
@@ -91,167 +81,73 @@ local sreg = (
   P"O"
 )
 
-local lex_greg = C( greg ) / function(...) print('GREG', ...) end
-
-local lex_sreg = C( sreg ) / function(...) print('SREG', ...) end
-
-local lex_mref = C( P"[" * w0 * (
+local mref = P"[" * w0 * (
                       ( greg * w0 * P"+" * w0 * numlit )
                     + ( numlit * w0 * P"+" * w0 * greg )
                     + ( greg )
                     + ( numlit )
-                  ) * w0 * P"]" ) / function(...) print('MREF', ...) end
+                  ) * w0 * P"]"
 
 local keywords = ( op + sop + greg + sreg )
 
 local variable = (locale.alpha + P "_") * (locale.alnum + P "_")^0 - ( keywords )
 
-local lex_variable = C( variable ) / function(...) print('VAR', ...) end
-
-
 local label = P":" * variable
 
-local lex_label = C( label ) / function(...) print('LABEL', ...) end
+
+-- lexers
+
+local lex_comment  = comment       / function(...) print('COMMENT', ...) end
+local lex_literal  = literal       / function(...) print('LITERAL', ...) end
+local lex_comma    = P","          / function(...) print('COMMA', ...) end
+local lex_op       = C( op )       / function(...) print('OP', ...) end
+local lex_sop      = C( sop )      / function(...) print('OP', ...) end
+local lex_greg     = C( greg )     / function(...) print('GREG', ...) end
+local lex_sreg     = C( sreg )     / function(...) print('SREG', ...) end
+local lex_mref     = C( mref )     / function(...) print('MREF', ...) end
+local lex_variable = C( variable ) / function(...) print('VAR', ...) end
+local lex_label    = C( label )    / function(...) print('LABEL', ...) end
+
+local lex_actions = {
+        comment  = function(...) print('COMMENT', ...) end,
+        literal  = function(...) print('LITERAL', ...) end,
+        comma    = function(...) print('COMMA', ...) end,
+        op       = function(...) print('GOP', ...) end,
+        sop      = function(...) print('SOP', ...) end,
+        greg     = function(...) print('GREG', ...) end,
+        sreg     = function(...) print('SREG', ...) end,
+        mref     = function(...) print('MREF', ...) end,
+        variable = function(...) print('VAR', ...) end,
+        label    = function(...) print('LABEL', ...) end
+}
 
 
---[[
+-- final parser
 
-local keyword = C(
-  P"auto" + 
-  P"_Bool" +
-  P"break" +
-  P"case" +
-  P"char" +
-  P"_Complex" +
-  P"const" +
-  P"continue" +
-  P"default" +
-  P"do" +
-  P"double" +
-  P"else" +
-  P"enum" +
-  P"extern" +
-  P"float" +
-  P"for" +
-  P"goto" +
-  P"if" +
-  P"_Imaginary" +
-  P"inline" +
-  P"int" +
-  P"long" +
-  P"register" +
-  P"restrict" +
-  P"return" +
-  P"short" +
-  P"signed" +
-  P"sizeof" +
-  P"static" +
-  P"struct" +
-  P"switch" +
-  P"typedef" +
-  P"union" +
-  P"unsigned" +
-  P"void" +
-  P"volatile" +
-  P"while"
-) / function(...) print('KEYWORD', ...) end
-
-local identifier = (letter * alphanum^0 - keyword * (-alphanum))
-                 / function(...) print('ID',...) end
-
-local op = C(
-  P"..." +
-  P">>=" +
-  P"<<=" +
-  P"+=" +
-  P"-=" +
-  P"*=" +
-  P"/=" +
-  P"%=" +
-  P"&=" +
-  P"^=" +
-  P"|=" +
-  P">>" +
-  P"<<" +
-  P"++" +
-  P"--" +
-  P"->" +
-  P"&&" +
-  P"||" +
-  P"<=" +
-  P">=" +
-  P"==" +
-  P"!=" +
-  P";" +
-  P"{" + P"<%" +
-  P"}" + P"%>" +
-  P"," +
-  P":" +
-  P"=" +
-  P"(" +
-  P")" +
-  P"[" + P"<:" +
-  P"]" + P":>" +
-  P"." +
-  P"&" +
-  P"!" +
-  P"~" +
-  P"-" +
-  P"+" +
-  P"*" +
-  P"/" +
-  P"%" +
-  P"<" +
-  P">" +
-  P"^" +
-  P"|" +
-  P"?"
-) / function(...) print('OP', ...) end
-
-local tokens = (comment + identifier + keyword +
-                literal + op + whitespace)^0
-
-]]--
-
-local tokens = ( lex_comment
-               + lex_op
-               + lex_sop
-               + lex_mref
-               + lex_greg
-               + lex_sreg
-               + lex_literal
-               + lex_label
-               + lex_variable
-               + lex_comma
+function parser(actions)
+        return ( comment       / actions.comment
+               + literal       / actions.literal
+               + P","          / actions.comma
+               + C( op )       / actions.op
+               + C( sop )      / actions.sop
+               + C( greg )     / actions.greg
+               + C( sreg )     / actions.sreg
+               + C( mref )     / actions.mref
+               + C( variable ) / actions.variable
+               + C( label )    / actions.label
                + whitespace
                )^0
+end
 
 -- frontend
 local filename = arg[1]
 local fh = assert(io.open(filename))
 local input = fh:read'*a'
 fh:close()
-print(lpeg.match(tokens, input))
-
---[[
-
-~~ ThomasHarningJr : Suggestion for optimization of the 'op' matcher in the C preprocessor... This should be faster due to the use of sets instead of making tons of 'basic' string comparisons. Not sure 'how' much faster...
-
-local shiftOps = P">>" + P"<<"
-local digraphs = P"<%" + P"%>" + P"<:" + P":>" -- {, }, [, ]
-local op = C(
--- First match the multi-char items
-  P"..." +
-  ((shiftOps + S("+-*/%&^|<>=!")) * P"=") +
-  shiftOps +
-  P"++" +
-  P"--" +
-  P"&&" +
-  P"||" +
-  P"->" +
-  digraphs +
-  S(";{},:=()[].&!~-+*/%<>^|?")
-) / function(...) print('OP', ...) end
-
-]]--
+local rc = lpeg.match(parser(lex_actions), input)
+print(rc)
+if (rc < input:len()) then
+        print("ERROR: parser filed here...")
+        print(input:sub(rc))
+end
 
