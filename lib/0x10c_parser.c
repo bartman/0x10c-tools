@@ -270,6 +270,8 @@ static struct x10c_parsed_line * x10c_parser_parse_line (struct x10c_parser *pr,
 			pl->label = w;
 		}
 
+		pr->ops.add_label (pr, pl->label);
+
 		w = find_word(&pl->p);
 	}
 
