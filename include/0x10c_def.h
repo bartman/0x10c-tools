@@ -7,6 +7,7 @@
 typedef uint16_t x10c_word;
 
 #define X10C_NUM_REGS 0x8
+#define X10C_RAM_WORDS 0x10000
 #define X10C_MAX_OP_LEN 3
 
 /* basic opcodes */

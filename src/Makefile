@@ -24,6 +24,12 @@ ${OBJS}: %.o: %.c .%.c.dep
 ${DEPS}: .%.dep: % Makefile
 	${CC} ${CFLAGS} ${CPPFLAGS} -MM $< > $@
 
+tags:
+	${MAKE} -C .. $@
+
 clean:
-	-rm -f *~ *.o
+	-rm -f *~ *.o ${TARGET}
+
+distclean: clean
+	-rm -f .*.dep
 

@@ -1,5 +1,5 @@
 TARGET = lib0x10c.a
-SRCS   = 0x10c_isn.c
+SRCS   = 0x10c_isn.c 0x10c_parser.c 0x10c_generator.c 0x10c_exec.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
@@ -7,7 +7,7 @@ INCLUDES = ../include
 
 CPPFLAGS = $(foreach p,${INCLUDES}, -I$p)
 
-.PHONY: all clean
+.PHONY: all clean distclean
 
 all: ${TARGET}
 
@@ -22,7 +22,12 @@ ${OBJS}: %.o: %.c .%.c.dep
 ${DEPS}: .%.dep: % Makefile
 	${CC} ${CFLAGS} ${CPPFLAGS} -MM $< > $@
 
-clean:
-	-rm -f *~ *.o
+tags:
+	${MAKE} -C .. $@
 
+clean:
+	-rm -f *~ *.o ${TARGET}
+
+distclean: clean
+	-rm -f .*.dep
 
