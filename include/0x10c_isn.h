@@ -11,13 +11,14 @@
 
 struct x10c_isn;
 struct x10c_vcpu;
+struct x10c_parser;
 
 struct x10c_isn_ops {
 	/**
 	 * parses an instruction from text to binary
 	 */
-	int (*parser)(const struct x10c_isn *isn,
-			x10c_op_t *op, char *buf);
+	int (*parser)(struct x10c_parser *pr, const struct x10c_isn *isn,
+			x10c_op_t *op, char *buf, int *unresolved);
 
 	/**
 	 * generates a text representation of an instruction

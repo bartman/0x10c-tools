@@ -17,8 +17,9 @@
 
 // ----
 
-static int x10c_parser_arg(const struct x10c_isn *isn,
-			x10c_op_t *op, int *next_word, char *arg, int arg_num)
+static int x10c_parser_arg(struct x10c_parser *pr, const struct x10c_isn *isn,
+			x10c_op_t *op, int *next_word, int *unresolved,
+			char *arg, int arg_num)
 {
 	char *p = arg;
 	char *a, *b, *e;
@@ -134,11 +135,16 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 		}
 	} else {
 		/* reference */
+		long ofs;
 
 		dbg("  # reference %s\n", p);
 
+		ofs = pr->ops.find_label(pr, p);
+		if (ofs == -1)
+			*unresolved = 1;
+
 		val = 0x1f;
-		op->word[*next_word] = 0; // don't know what it is yet
+		op->word[*next_word] = ofs;
 		(*next_word) ++;
 	}
 
@@ -149,8 +155,8 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 	return 0;
 }
 
-int x10c_basic_parser(const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf)
+int x10c_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
+		x10c_op_t *op, char *buf, int *unresolved)
 {
 	char *p = buf;
 	char *w;
@@ -164,7 +170,7 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 
 	dbg("# a = %s\n", w);
 
-	rc = x10c_parser_arg(isn, op, &next_word, w, 0);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, unresolved, w, 0);
 	if (rc<0)
 		return rc;
 
@@ -174,7 +180,7 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 
 	dbg("# b = %s\n", w);
 
-	rc = x10c_parser_arg(isn, op, &next_word, w, 1);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, unresolved, w, 1);
 	if (rc<0)
 		return rc;
 
@@ -183,8 +189,8 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 
 	return next_word;
 }
-int x10c_non_basic_parser(const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf)
+int x10c_non_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
+		x10c_op_t *op, char *buf, int *unresolved)
 {
 	char *p = buf;
 	char *w;
@@ -199,7 +205,7 @@ int x10c_non_basic_parser(const struct x10c_isn *isn,
 
 	dbg("# a = %s\n", w);
 
-	rc = x10c_parser_arg(isn, op, &next_word, w, 0);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, unresolved, w, 0);
 	if (rc<0)
 		return rc;
 
@@ -288,7 +294,7 @@ static struct x10c_parsed_line * x10c_parser_parse_line (struct x10c_parser *pr,
 	dbg("# isn=%s op=%u,%u\n", pl->isn->op_name,
 			pl->isn->op_code, pl->isn->ext_op_code);
 
-	rc = pl->isn->ops.parser(pl->isn, pl->op, pl->p);
+	rc = pl->isn->ops.parser(pr, pl->isn, pl->op, pl->p, &pl->unresolved);
 	if (rc >= 0) {
 		pl->word_count = rc;
 
@@ -372,6 +378,41 @@ static void x10c_parser_set_context (struct x10c_parser *pr,
 	pr->line = line;
 }
 
+struct x10c_parser_label {
+	struct list link;
+	const char *name;
+	x10c_word ofs;
+};
+
+static void x10c_parser_add_label (struct x10c_parser *pr, const char *name)
+{
+	struct x10c_parser_label *lab;
+
+	lab = calloc(1, sizeof(*lab));
+
+	lab->name = name;
+	lab->ofs = pr->ram_used;
+
+	list_add_tail(&lab->link, &pr->labels);
+}
+
+static long x10c_parser_find_label (struct x10c_parser *pr,
+		const char *name)
+{
+	struct x10c_parser_label *lab;
+
+	list_for_each_entry(lab, &pr->labels, link) {
+		if (!strcmp(name, lab->name))
+			return lab->ofs;
+	}
+
+	return -1;
+}
+
+static void x10c_parser_finalize (struct x10c_parser *pr)
+{
+}
+
 static void x10c_parser_dump(struct x10c_parser *pr, FILE *out)
 {
 	int i;
@@ -392,11 +433,17 @@ static void x10c_parser_dump(struct x10c_parser *pr, FILE *out)
 
 static void x10c_parser_delete(struct x10c_parser *pr)
 {
-	struct x10c_parsed_line *pl, *next;
+	struct x10c_parsed_line *pl, *pl_next;
+	struct x10c_parser_label *lab, *lab_next;
 
-	list_for_each_entry_safe(pl, next, &pr->parsed_lines, link) {
+	list_for_each_entry_safe(pl, pl_next, &pr->parsed_lines, link) {
 		list_del(&pl->link);
 		x10c_parsed_line_delete(pl);
+	}
+
+	list_for_each_entry_safe(lab, lab_next, &pr->labels, link) {
+		list_del(&lab->link);
+		free(lab);
 	}
 
 	free(pr);
@@ -406,6 +453,9 @@ static struct x10c_parser_ops x10c_parser_ops = {
 	.parse_file  = x10c_parser_parse_file,
 	.set_context = x10c_parser_set_context,
 	.parse_line  = x10c_parser_parse_line,
+	.add_label   = x10c_parser_add_label,
+	.find_label  = x10c_parser_find_label,
+	.finalize    = x10c_parser_finalize,
 	.dump        = x10c_parser_dump,
 	.delete      = x10c_parser_delete,
 };
@@ -418,6 +468,7 @@ struct x10c_parser * x10c_parser_new(const char *file,
 	pr = calloc(1, sizeof(*pr));
 
 	list_init(&pr->parsed_lines);
+	list_init(&pr->labels);
 
 	pr->ram_used = 0;
 
