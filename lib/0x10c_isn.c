@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 
 #include "0x10c_isn.h"
 #include "0x10c_util.h"
@@ -43,3 +44,23 @@ struct x10c_isn x10c_basic_isns[X10C_OP_MAX] = {
 struct x10c_isn x10c_non_basic_isns[X10C_XOP_MAX] = {
 	X10C_NON_BASIC_ISN_ENTRY(JSR),
 };
+
+struct x10c_isn * x10c_lookup_isn_for_name(const char *name)
+{
+	int i;
+	struct x10c_isn *isn;
+
+	for (i=0; i<X10C_OP_MAX; i++) {
+		isn = &x10c_basic_isns[i];
+		if (isn->op_name && !strcmp(isn->op_name, name))
+			return isn;
+	}
+
+	for (i=0; i<X10C_XOP_MAX; i++) {
+		isn = &x10c_non_basic_isns[i];
+		if (isn->op_name && !strcmp(isn->op_name, name))
+			return isn;
+	}
+
+	return NULL;
+}

@@ -16,8 +16,7 @@ struct x10c_isn_ops {
 	 * parses an instruction from text to binary
 	 */
 	int (*parser)(const struct x10c_isn *isn,
-			x10c_op_t *op,
-			const char *buf, size_t buf_len);
+			x10c_op_t *op, char *buf);
 
 	/**
 	 * generates a text representation of an instruction
@@ -57,6 +56,8 @@ static inline struct x10c_isn * x10c_lookup_isn_for_op(const x10c_op_t *op)
 	}
 	return NULL;
 }
+
+extern struct x10c_isn * x10c_lookup_isn_for_name(const char *name);
 
 
 #endif // __included_0x10c_isn_h__

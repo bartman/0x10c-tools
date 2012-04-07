@@ -14,6 +14,7 @@ CPPFLAGS = $(foreach p,${INCLUDES}, -I$p)
 all: ${TARGET}
 
 -include $(wildcard ${DEPS})
+-include ../Makefile.conf
 
 ${TARGET}: ${OBJS} ${LIBS}
 	${CC} ${LDFLAGS} ${CFLAGS} -o $@ $^
