@@ -5,6 +5,7 @@
 /* things about the CPU */
 
 typedef uint16_t x10c_word;
+#define X10C_MAX_WORD_VALUE 0x10000
 
 #define X10C_NUM_REGS 0x8
 #define X10C_RAM_WORDS 0x10000
@@ -36,31 +37,31 @@ typedef uint16_t x10c_word;
 /* opcode arguments */
 
 /* 0x00-0x07: register (A, B, C, X, Y, Z, I or J, in that order) */
-#define X10C_ARG_REG_A 0x0
-#define X10C_ARG_REG_B 0x1
-#define X10C_ARG_REG_C 0x2
-#define X10C_ARG_REG_X 0x3
-#define X10C_ARG_REG_Y 0x4
-#define X10C_ARG_REG_Z 0x5
-#define X10C_ARG_REG_I 0x6
-#define X10C_ARG_REG_J 0x7
+#define X10C_REG_A 0x0
+#define X10C_REG_B 0x1
+#define X10C_REG_C 0x2
+#define X10C_REG_X 0x3
+#define X10C_REG_Y 0x4
+#define X10C_REG_Z 0x5
+#define X10C_REG_I 0x6
+#define X10C_REG_J 0x7
 
 /* 0x08-0x0f: [register] */
 #define X10C_ARG_MREF_REG_BASE 0x8
-#define X10C_ARG_MREF_REG(n) (X10C_ARG_MREF_REG_BASE + X10C_ARG_REG_##n)
+#define X10C_ARG_MREF_REG(n) (X10C_ARG_MREF_REG_BASE + X10C_REG_##n)
 
 /* 0x10-0x17: [next word + register] */
 #define X10C_ARG_MREF_OFS_REG_BASE 0x10
-#define X10C_ARG_MREF_OFS_REG(n) (X10C_ARG_MREF_OFS_REG_BASE + X10C_ARG_REG_##n)
+#define X10C_ARG_MREF_OFS_REG(n) (X10C_ARG_MREF_OFS_REG_BASE + X10C_REG_##n)
 
-#define X10C_ARG_REG_POP        0x18 /* POP / [SP++] */
-#define X10C_ARG_REG_PEEK       0x19 /* PEEK / [SP] */
-#define X10C_ARG_REG_PUSH       0x1a /* PUSH / [--SP] */
-#define X10C_ARG_REG_SP         0x1b /* SP */
-#define X10C_ARG_REG_PC         0x1c /* PC */
-#define X10C_ARG_REG_O          0x1d /* O */
-#define X10C_ARG_MREF_NEXT_WORD 0x1e /* [next word] */
-#define X10C_ARG_NEXT_WORD      0x1f /* next word (literal) */
+#define X10C_REG_POP        0x18 /* POP / [SP++] */
+#define X10C_REG_PEEK       0x19 /* PEEK / [SP] */
+#define X10C_REG_PUSH       0x1a /* PUSH / [--SP] */
+#define X10C_REG_SP         0x1b /* SP */
+#define X10C_REG_PC         0x1c /* PC */
+#define X10C_REG_O          0x1d /* O */
+#define X10C_MREF_NEXT_WORD 0x1e /* [next word] */
+#define X10C_NEXT_WORD      0x1f /* next word (literal) */
 
 /* 0x20-0x3f: literal value 0x00-0x1f (literal) */
 #define X10C_ARG_LITERAL_BASE 0x20

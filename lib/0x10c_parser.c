@@ -84,13 +84,77 @@ static char * find_word_sep(char **pp, const char *sep)
 	return w;
 }
 
+// trim leading and trailing space
+static char * trim(char *p)
+{
+	char *e;
+	e = p = find_non_space(p);
+
+	while (*e) e++;
+	if (e == p)
+		return p;
+
+	e--;
+	while(e>p && isspace(*e)) e--;
+	e[1] = 0;
+
+	return p;
+}
+
+// duplicate w/o spaces at the edges
+static char * trimndup(const char *src, size_t max)
+{
+	return trim(strndup(src, max));
+}
+
 
 // ----
 
 static int x10c_parser_arg(const struct x10c_isn *isn,
-			x10c_op_t *op, char *arg, int arg_num)
+			x10c_op_t *op, int *next_word, char *arg, int arg_num)
 {
-	return 1;
+	char *p = arg;
+	char *w, *e;
+	struct x10c_reg *reg;
+	unsigned ret = 0;
+	unsigned val;
+	unsigned shift;
+
+	if (*p == '[') {
+		/* memory reference */
+
+		printf("  # mref\n");
+
+	} else if (reg = x10c_lookup_reg_for_name(p)) {
+		/* register */
+
+		printf("  # reg %s/%d\n", reg->reg_name, reg->reg_num);
+
+		val = reg->reg_num;
+
+	} else {
+		/* literal */
+
+		unsigned long v = strtoul(p, &e, 0);
+		if (v > X10C_MAX_WORD_VALUE)
+			return -ERANGE;
+
+		printf("  # literal %lu\n", v);
+
+		if (v < 0x20) {
+			val = 0x20 + v;
+		} else {
+			val = 0x1f;
+			op->word[*next_word] = v;
+			(*next_word) ++;
+		}
+	}
+
+	shift = 4 + (arg_num * 6);
+
+	op->word[0] |= val << shift;
+
+	return 0;
 }
 
 int x10c_basic_parser(const struct x10c_isn *isn,
@@ -98,7 +162,7 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 {
 	char *p = buf;
 	char *w;
-	int rc, cnt = 0;
+	int rc, next_word = 1;
 
 	op->b.op = isn->op_code;
 
@@ -108,10 +172,9 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 
 	printf("# a = %s\n", w);
 
-	rc = x10c_parser_arg(isn, op, w, 0);
+	rc = x10c_parser_arg(isn, op, &next_word, w, 0);
 	if (rc<0)
 		return rc;
-	cnt += rc;
 
 	w = find_word(&p);
 	if (!w)
@@ -119,17 +182,21 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 
 	printf("# b = %s\n", w);
 
-	rc = x10c_parser_arg(isn, op, w, 1);
+	rc = x10c_parser_arg(isn, op, &next_word, w, 1);
 	if (rc<0)
 		return rc;
 
-	return cnt + rc;
+	printf("# rc=%d [ %04x %04x %04x ]\n", next_word,
+			op->word[0], op->word[1], op->word[2]);
+
+	return next_word;
 }
 int x10c_non_basic_parser(const struct x10c_isn *isn,
 		x10c_op_t *op, char *buf)
 {
 	char *p = buf;
 	char *w;
+	int rc, next_word = 1;
 
 	op->x.zero = X10C_OP_NON_BASIC;
 	op->x.op = isn->ext_op_code;
@@ -140,13 +207,17 @@ int x10c_non_basic_parser(const struct x10c_isn *isn,
 
 	printf("# a = %s\n", w);
 
-	return x10c_parser_arg(isn, op, w, 0);
+	rc = x10c_parser_arg(isn, op, &next_word, w, 0);
+	if (rc<0)
+		return rc;
+
+	return next_word;
 }
 
 int x10c_parse_line(x10c_op_t *op, const char *buf, size_t buf_len)
 {
 	int rc;
-	char *buf_copy = strndup(buf, buf_len);
+	char *buf_copy = trimndup(buf, buf_len);
 	char *p = buf_copy;
 	char *w;
 	const struct x10c_isn *isn;

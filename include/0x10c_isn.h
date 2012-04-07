@@ -6,7 +6,8 @@
 #include "0x10c_def.h"
 #include "0x10c_op.h"
 
-#define X10C_OP_NAME_MAX 16
+#define X10C_OP_NAME_MAX 8
+#define X10C_REG_NAME_MAX 8
 
 struct x10c_isn;
 struct x10c_vcpu;
@@ -45,19 +46,51 @@ struct x10c_isn {
 extern struct x10c_isn x10c_basic_isns[X10C_OP_MAX];
 extern struct x10c_isn x10c_non_basic_isns[X10C_XOP_MAX];
 
+struct x10c_reg {
+	const char reg_name[X10C_REG_NAME_MAX];
+	uint8_t    reg_num;
+	uint8_t    general:1;
+};
+
+#define X10C_REGS_MAX 0x20
+extern struct x10c_reg x10c_regs[X10C_REGS_MAX];
+
+
 static inline struct x10c_isn * x10c_lookup_isn_for_op(const x10c_op_t *op)
 {
+	struct x10c_isn *isn = NULL;
 	if (x10c_op_is_basic(op)) {
 		if (op->b.op < X10C_OP_MAX)
-			return &x10c_basic_isns[op->b.op];
+			isn = &x10c_basic_isns[op->b.op];
 	} else {
 		if (op->x.op < X10C_XOP_MAX)
-			return &x10c_non_basic_isns[op->b.op];
+			isn = &x10c_non_basic_isns[op->b.op];
 	}
+
+	if (isn && isn->op_name[0])
+		return isn;
+
 	return NULL;
 }
 
 extern struct x10c_isn * x10c_lookup_isn_for_name(const char *name);
+
+
+
+static inline struct x10c_reg * x10c_lookup_reg_for_num(unsigned num)
+{
+	struct x10c_reg *reg = NULL;
+	if (num < X10C_REGS_MAX)
+		reg = &x10c_regs[num];
+
+	if (reg && reg->reg_name[0])
+		return reg;
+
+	return NULL;
+}
+
+extern struct x10c_reg * x10c_lookup_reg_for_name(const char *name);
+
 
 
 #endif // __included_0x10c_isn_h__

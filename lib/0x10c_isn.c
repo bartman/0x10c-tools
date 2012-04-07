@@ -64,3 +64,39 @@ struct x10c_isn * x10c_lookup_isn_for_name(const char *name)
 
 	return NULL;
 }
+
+/* registers */
+
+#define X10C_REG_ENTRY(REG,GP) \
+	[X10C_REG_##REG] = { __stringify(REG), X10C_REG_##REG, GP }
+
+struct x10c_reg x10c_regs[X10C_REGS_MAX] = {
+	X10C_REG_ENTRY(A,1),
+	X10C_REG_ENTRY(B,1),
+	X10C_REG_ENTRY(C,1),
+	X10C_REG_ENTRY(X,1),
+	X10C_REG_ENTRY(Y,1),
+	X10C_REG_ENTRY(Z,1),
+	X10C_REG_ENTRY(I,1),
+	X10C_REG_ENTRY(J,1),
+	X10C_REG_ENTRY(POP,0),
+	X10C_REG_ENTRY(PEEK,0),
+	X10C_REG_ENTRY(PUSH,0),
+	X10C_REG_ENTRY(SP,0),
+	X10C_REG_ENTRY(PC,0),
+	X10C_REG_ENTRY(O,0),
+};
+
+struct x10c_reg * x10c_lookup_reg_for_name(const char *name)
+{
+	int i;
+	struct x10c_reg *reg;
+
+	for (i=0; i<X10C_REGS_MAX; i++) {
+		reg = & x10c_regs[i];
+		if (reg->reg_name && !strcmp(reg->reg_name, name))
+			return reg;
+	}
+
+	return NULL;
+}
