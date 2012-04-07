@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <ctype.h>
+#include "list.h"
 
 #include "0x10c_op.h"
 

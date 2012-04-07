@@ -26,6 +26,9 @@
 #ifndef _LIST_H_
 #define _LIST_H_
 
+#include <stdint.h>
+#include <stdbool.h>
+
 /**
  * @file Classic doubly-link circular list implementation.
  *
@@ -195,7 +198,7 @@ list_del(struct list *entry)
  *
  * @return True if the list contains one or more elements or False otherwise.
  */
-static inline Bool
+static inline bool
 list_is_empty(struct list *head)
 {
     return head->next == head;
