@@ -13,13 +13,15 @@ int main(int argc, char *argv[])
 	const char *filename;
 	struct x10c_parser *pr;
 	//struct x10c_parsed_line *pl;
-	struct x10c_vcpu vcpu;
+	struct x10c_vcpu *vcpu;
 	FILE *f;
 
 	filename = argv[1];
 
-	pr = x10c_parser_new(filename, vcpu.ram, X10C_RAM_WORDS);
+	vcpu = x10c_vcpu_new();
 	
+	pr = x10c_parser_new(filename, vcpu->ram, X10C_RAM_WORDS);
+
 	f = fopen(filename, "r");
 	if (!f) {
 		fprintf(stderr, "%s: %s\n",
@@ -36,6 +38,10 @@ int main(int argc, char *argv[])
 	pr->ops.dump(pr, stdout);
 
 	pr->ops.delete(pr);
+
+	fclose(f);
+
+	vcpu->ops.run(vcpu);
 
 	return 0;
 }

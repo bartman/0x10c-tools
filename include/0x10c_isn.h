@@ -29,9 +29,12 @@ struct x10c_isn_ops {
 
 	/**
 	 * execute an instruction on the vcpu
+	 * @return negative on error
 	 */
 	int (*execute)(const struct x10c_isn *isn,
 			const x10c_op_t *op,
+			x10c_word *a,
+			x10c_word *b,
 			struct x10c_vcpu *vcpu);
 };
 

@@ -1,5 +1,5 @@
 TARGET = lib0x10c.a
-SRCS   = 0x10c_isn.c 0x10c_parser.c 0x10c_generator.c 0x10c_exec.c
+SRCS   = 0x10c_isn.c 0x10c_parser.c 0x10c_generator.c 0x10c_exec.c 0x10c_vcpu.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 

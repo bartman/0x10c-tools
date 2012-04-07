@@ -337,14 +337,22 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, FILE *in)
 		char *str = trim(buf);
 		struct x10c_parsed_line *pl;
 		x10c_op_t *op;
+		x10c_word pc;
 
 		pr->line ++;
+
+		pc = pr->ram_used;
 
 		pl = pr->ops.parse_line(pr, str, strlen(str));
 
 		op = pl->op;
 
-		printf("%-80s ; %s%-10s", str,
+		printf("%-80s ; ", str);
+		if (pl->word_count)
+			printf("[%04x] ", pc);
+		else
+			printf("       ");
+		printf("%s%-10s",
 				pl->label ? ":" : " ",
 				pl->label ?: "");
 
