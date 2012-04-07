@@ -108,13 +108,6 @@ static char * trim(char *p)
 	return p;
 }
 
-// duplicate w/o spaces at the edges
-static char * trimndup(const char *src, size_t max)
-{
-	return trim(strndup(src, max));
-}
-
-
 // ----
 
 static int x10c_parser_arg(const struct x10c_isn *isn,
@@ -302,12 +295,12 @@ int x10c_non_basic_parser(const struct x10c_isn *isn,
 int x10c_parse_line(x10c_op_t *op, const char *buf, size_t buf_len)
 {
 	int rc;
-	char *buf_copy = trimndup(buf, buf_len);
-	char *p = buf_copy;
+	char *buf_copy = strndup(buf, buf_len);
+	char *p = trim(buf_copy);
 	char *w;
 	const struct x10c_isn *isn;
 
-	dbg("# %s\n", buf_copy);
+	dbg("# %s\n", p);
 
 	w = find_word(&p);
 	if (!w) {
