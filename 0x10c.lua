@@ -6,14 +6,26 @@ local function dbg(l,...)
                 io.stderr:write("# "..table.concat({...},"\t").."\n")
         end
 end
+local function dbgf(l,fmt,...)
+        if debug_level >= l then
+                io.stderr:write("# "..string.format(fmt,...).."\n")
+        end
+end
 local function die(...)
         io.stderr:write("ERROR: "..table.concat({...},"\t").."\n")
         os.exit(1)
 end
-local function map(func, array)
+local function lmap(func, array)
         local new_array = {}
         for i,v in ipairs(array) do
                 new_array[i] = func(v)
+        end
+        return new_array
+end
+local function tmap(func, array)
+        local new_array = {}
+        for k,v in pairs(array) do
+                new_array[k] = func(v)
         end
         return new_array
 end
@@ -142,6 +154,8 @@ local variable = (locale.alpha + P "_") * (locale.alnum + P "_")^0 - ( keywords 
 
 local label = P":" * variable
 
+local label_c = P":" * C( variable )
+
 -- instruction opcodes take arguments
 
 local oparg = reg + numlit + variable + mref
@@ -159,6 +173,15 @@ local isn_c = gisn_c + xisn_c
 
 -- lexer
 
+local lexer = {
+        finalize = function(self)
+                os.exit(0)
+        end,
+        output = function(self, file)
+                os.exit(0)
+        end,
+}
+
 local lex_actions = {
         comment  = function(...) print('COMMENT', ...) end,
         literal  = function(...) print('LITERAL', ...) end,
@@ -172,22 +195,104 @@ local lex_actions = {
         label    = function(...) print('LABEL', ...) end
 }
 
-function get_lexer()
-        return ( comment       / lex_actions.comment
-               + literal       / lex_actions.literal
-               + P","          / lex_actions.comma
-               + C( gop )      / lex_actions.gop
-               + C( sop )      / lex_actions.sop
-               + greg_c        / lex_actions.greg
-               + C( sreg )     / lex_actions.sreg
-               + mref_c         / lex_actions.mref
-               + C( variable ) / lex_actions.variable
-               + C( label )    / lex_actions.label
-               + whitespace
-        )^0
-end
+lexer.matcher = ( comment       / lex_actions.comment
+                + literal       / lex_actions.literal
+                + P","          / lex_actions.comma
+                + C( gop )      / lex_actions.gop
+                + C( sop )      / lex_actions.sop
+                + greg_c        / lex_actions.greg
+                + C( sreg )     / lex_actions.sreg
+                + mref_c         / lex_actions.mref
+                + C( variable ) / lex_actions.variable
+                + C( label )    / lex_actions.label
+                + whitespace
+                )^0
 
 -- assembler
+
+local assembler = {
+        pc = 0,            -- current program counter
+        instructions = {}, -- { { ofs=num, isn={}, words={}, final=bool } ... }
+        vars = {},         -- { name = ofs, ... }
+
+        append = function(self,isn)
+                isn.ofs = self.pc
+                table.insert(self.instructions, isn)
+                self.pc = self.pc + #isn.words
+        end,
+
+        finalize = function(self)
+
+                dbg(1, 'finalize...')
+
+                self.instructions = tmap(function(isn)
+                        if isn.final then return isn end
+
+                        dbg(1, 'not final: '..table.concat(isn.isn,','))
+
+                        local new = isn.opcode.assemble(isn.opcode, isn.isn[1], isn.isn[2], isn.isn[3])
+
+                        isn.words = new.words
+
+                        return isn
+                end, self.instructions)
+                
+        end,
+
+        dump = function(self, file)
+                dbg(1, 'dump...')
+
+                for k,isn in pairs(self.instructions) do
+                        for var,vofs in pairs(self.vars) do
+                                if isn.ofs == vofs then
+                                        dbgf(1, "       :%s", var)
+                                end
+                        end
+                        dbgf(1, "%04x: %4s %-20s ; %s",
+                            isn.ofs,
+                            isn.isn[1],
+                            table.concat({isn.isn[2],isn.isn[3]},', '),
+                            table.concat(lmap(function(num) return xxxx(num) end, isn.words), ' ')
+                        )
+                end
+        end,
+
+        output = function(self, filename)
+                dbg(1, 'output...')
+
+                local f
+
+                if filename == '-' then
+                        f = io.stdout
+                else
+                        f = assert(io.open(filename, "w+b"))
+                end
+
+                local words = {}
+
+                for k,isn in pairs(self.instructions) do
+                        for i = 1, #isn.words do
+                                words[#words+1] = isn.words[i]
+                        end
+                end
+
+                local o=0
+                while o < #words do
+                        f:write(xxxx(o)..':')
+                        for i = 1,8 do
+                                if words[o+i] then
+                                        f:write(' '..xxxx(words[o+i]))
+                                end
+                        end
+                        f:write("\n")
+                        o = o + 8
+                end
+
+                if filename ~= '-' then
+                        f:close()
+                end
+        end,
+}
 
 local generic_registers = {
         A={ num=0 },
@@ -209,7 +314,7 @@ local special_registers = {
        O   ={ num=0x1d },
 }
 
-function assemble_isn_arg(arg, words, mult)
+function assemble_isn_arg(arg, isn, mult)
 
         local num = 0
 
@@ -237,16 +342,21 @@ function assemble_isn_arg(arg, words, mult)
                         num = n + 0x20
                 else
                         num = 0x1f
-                        words[#words + 1] = n
+                        isn.words[#isn.words + 1] = n
                 end
         end
         + variable / function()
                 dbg(3,"", "variable", arg)
 
-                num = 0x1f
-                words[#words + 1] = 0 -- don't know yet where it is
+                local ofs = assembler.vars[arg]
+                if not ofs then
+                        -- record unresolved address
+                        isn.final = false
+                        ofs = 0 -- don't know yet where it is
+                end
 
-                -- TODO: record unresolved address
+                num = 0x1f
+                isn.words[#isn.words + 1] = ofs
         end
         + mref / function()
                 local t = lpeg.match(mref_ct, arg)
@@ -265,7 +375,7 @@ function assemble_isn_arg(arg, words, mult)
                 if t.reg and t.numlit then
 
                         num = 0x10 + gr.num
-                        words[#words + 1] = t.numlit
+                        isn.words[#isn.words + 1] = t.numlit
 
                 elseif t.reg then
 
@@ -274,7 +384,7 @@ function assemble_isn_arg(arg, words, mult)
                 elseif t.numlit then
 
                         num = 0x1e
-                        words[#words + 1] = t.numlit
+                        isn.words[#isn.words + 1] = t.numlit
 
                 else
                         die("don't know how to encode mref '"..arg.."'")
@@ -287,24 +397,28 @@ function assemble_isn_arg(arg, words, mult)
         end
 
         -- this is really op |= num << shift, but lua lacks bit ops
-        words[1] = words[1] + (num * mult)
+        isn.words[1] = isn.words[1] + (num * mult)
 end
 
 
 function assemble_gisn(opcode, isn, a, b)
         dbg(2,"", isn..'('..xx(opcode.num)..')', a, b)
         
-        local op_words = { }
+        local isn = {
+                opcode = opcode,
+                isn = { isn, a, b },
+                words = { opcode.num },
+                final = true
+        }
 
-        op_words[1] = opcode.num
+        assemble_isn_arg(a, isn, 16)    -- 16 to shift by 4 bits
+        assemble_isn_arg(b, isn, 1024)  -- 1024 to shift by 10 bits
 
-        assemble_isn_arg(a, op_words, 16)    -- 16 to shift by 4 bits
-        assemble_isn_arg(b, op_words, 1024)  -- 1024 to shift by 10 bits
-
-        dbg(1,">> ".. table.concat(map(function(n)
+        dbg(1,">> ".. table.concat(lmap(function(n)
                 return string.format("0x%04x", n)
-        end, op_words), ' '))
-        dbg(1)
+        end, isn.words), ' '))
+
+        return isn
 end
 
 local generic_opcodes = {
@@ -329,16 +443,20 @@ local generic_opcodes = {
 function assemble_xisn(opcode, isn, a)
         dbg(2,"", isn..'('..xx(opcode.num)..')', a, b)
         
-        local op_words = { }
+        local isn = {
+                opcode = opcode,
+                isn = { isn, a },
+                words = { opcode.num * 16 },
+                final = true
+        }
 
-        op_words[1] = opcode.num * 16
+        assemble_isn_arg(a, isn, 1024)    -- 1024 to shift by 10 bits
 
-        assemble_isn_arg(a, op_words, 1024)    -- 1024 to shift by 10 bits
-
-        dbg(1,">> ".. table.concat(map(function(n)
+        dbg(1,">> ".. table.concat(lmap(function(n)
                 return string.format("0x%04x", n)
-        end, op_words), ' '))
-        dbg(1)
+        end, isn.words), ' '))
+
+        return isn
 end
 
 local extension_opcodes = {
@@ -362,8 +480,9 @@ local assembler_actions = {
                         die("don't know opcode '"..args[1].."' in '"..(...).."'")
                 end
 
-                opcode.assemble(opcode, args[1], args[2], args[3])
-
+                local isn = opcode.assemble(opcode, args[1], args[2], args[3])
+                assembler:append(isn)
+                dbg(1)
         end,
         xisn = function(...)
                 local args = {...}
@@ -379,35 +498,47 @@ local assembler_actions = {
                         die("don't know opcode '"..args[1].."' in '"..(...).."'")
                 end
 
-                opcode.assemble(opcode, args[1], args[2])
+                local isn = opcode.assemble(opcode, args[1], args[2])
+                assembler:append(isn)
+                dbg(1)
         end,
         label = function(...)
+                local args = {...}
+
                 dbg(1,"LABEL",...)
+
+                if #args ~= 1 then
+                        die("expecting 0 additional arguments in '"..(...).."'")
+                end
+
+                local label = args[1]
+
+                if assembler.vars[label] then
+                        die("duplicate label found '"..label.."'")
+                end
+
+                assembler.vars[label] = assembler.pc
+                dbg(1)
         end
 }
 
-function get_assembler()
-        return ( comment       / assembler_actions.comment
-               + gisn_c        / assembler_actions.gisn
-               + xisn_c        / assembler_actions.xisn
-               + label         / assembler_actions.label
-               + whitespace
-        )^0
-end
-
+assembler.matcher = ( comment       / assembler_actions.comment
+                    + gisn_c        / assembler_actions.gisn
+                    + xisn_c        / assembler_actions.xisn
+                    + label_c       / assembler_actions.label
+                    + whitespace
+                    )^0
 
 -- parse command line
 
 local filename
-local matcher
+local handler
 
-for i=1,table.getn(arg) do
+local i = 1
+while i<=#arg do
         local a = arg[i]
-        if a:sub(0,1) ~= '-' then
-                filename = a
-                break
-
-        elseif a == "-h" or a == "--help" then
+        i = i + 1
+        if a == "-h" or a == "--help" then
                 print '0x10c'
                 print ''
                 print ' -h --help                         - this help'
@@ -421,17 +552,25 @@ for i=1,table.getn(arg) do
                 debug_level = debug_level + 1
 
         elseif a == "-l" or a == "--lex" then
-                matcher = get_lexer()
+                handler = lexer
+                filename = arg[i]
+                i = i + 1
 
         elseif a == "-a" or a == "--assemble" then
-                matcher = get_assembler()
+                handler = assembler
+                filename = arg[i]
+                i = i + 1
+
+        elseif a == "-o" or a == "--output" then
+                output = arg[i]
+                i = i + 1
 
         else
                 die("unknown option " .. a)
         end
 end
 
-if not matcher then die("need to specify an action; see --help") end
+if not handler then die("need to specify an action; see --help") end
 if not filename then die("need to specify a file") end
 
 
@@ -440,10 +579,13 @@ if not filename then die("need to specify a file") end
 local fh = assert(io.open(filename))
 local input = fh:read'*a'
 fh:close()
-local rc = lpeg.match(matcher, input)
-print()
+local rc = lpeg.match(handler.matcher, input)
 if (rc < input:len()) then
         print("ERROR: parser filed here...")
         print(input:sub(rc))
 end
+
+handler:dump()
+handler:finalize()
+handler:output(output)
 
