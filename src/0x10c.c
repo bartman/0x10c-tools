@@ -24,24 +24,28 @@ int main(int argc, char *argv[])
 
 	while ( fgets(buf, sizeof(buf), f) ) {
 
+		char *p = trim(buf);
 
 		memset(&op, 0, sizeof(op));
-		rc = x10c_parse_line(&op, buf, strlen(buf));
+		rc = x10c_parse_line(&op, p, strlen(p));
 		switch(rc) {
+		case 0:
+			printf("%-80s ;\n", "");
+			break;
 		case 1:
-			printf("%-20s ; %04x\n", buf,
+			printf("%-80s ; %04x\n", p,
 					op.word[0]);
 			break;
 		case 2:
-			printf("%-20s ; %04x %04x\n", buf,
+			printf("%-80s ; %04x %04x\n", p,
 					op.word[0], op.word[1]);
 			break;
 		case 3:
-			printf("%-20s ; %04x %04x %04x\n", buf,
+			printf("%-80s ; %04x %04x %04x\n", p,
 					op.word[0], op.word[1], op.word[2]);
 			break;
 		default:
-			printf("%-20s ; rc=%d\n", buf, rc);
+			printf("%-80s ; rc=%d\n", p, rc);
 			return rc;
 		}
 	}
