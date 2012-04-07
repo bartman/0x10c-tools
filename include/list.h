@@ -162,6 +162,15 @@ list_add(struct list *entry, struct list *head)
     __list_add(entry, head, head->next);
 }
 
+/**
+ * like list_add, but appends at tail
+ */
+static inline void
+list_add_tail(struct list *entry, struct list *head)
+{
+    __list_add(entry, head->prev, head);
+}
+
 static inline void
 __list_del(struct list *prev, struct list *next)
 {

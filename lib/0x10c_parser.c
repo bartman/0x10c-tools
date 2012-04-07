@@ -198,6 +198,8 @@ int x10c_non_basic_parser(const struct x10c_isn *isn,
 	return next_word;
 }
 
+// ----- line parser code -----
+
 static struct x10c_parsed_line * x10c_parsed_line_new(x10c_op_t *op,
 		const char *file, unsigned line,
 		const char *buf, size_t buf_len)
@@ -219,22 +221,27 @@ static struct x10c_parsed_line * x10c_parsed_line_new(x10c_op_t *op,
 	return pl;
 }
 
-void x10c_parsed_line_free(struct x10c_parsed_line *pl)
+static void x10c_parsed_line_delete(struct x10c_parsed_line *pl)
 {
 	free(pl);
 }
 
-struct x10c_parsed_line * x10c_parse_line(x10c_op_t *op,
-		const char *file, unsigned line,
+static struct x10c_parsed_line * x10c_parser_parse_line (struct x10c_parser *pr,
 		const char *buf, size_t buf_len)
 {
 	int rc;
 	struct x10c_parsed_line *pl;
+	x10c_op_t *op;
 	char *w;
 
-	pl = x10c_parsed_line_new(op, file, line, buf, buf_len);
+	op = (void*)(pr->ram + pr->ram_used);
+
+	pl = x10c_parsed_line_new(op, pr->file, pr->line, buf, buf_len);
 
 	dbg("# %s\n", pl->p);
+
+	if (pr->ram_used + X10C_MAX_OP_LEN > pr->ram_words)
+		goto failed_no_memory;
 
 	w = find_word(&pl->p);
 
@@ -274,15 +281,24 @@ struct x10c_parsed_line * x10c_parse_line(x10c_op_t *op,
 			pl->isn->op_code, pl->isn->ext_op_code);
 
 	rc = pl->isn->ops.parser(pl->isn, pl->op, pl->p);
-	if (rc < 0)
-		pl->error = rc;
-	else
+	if (rc >= 0) {
 		pl->word_count = rc;
+
+		list_add_tail(&pl->link, &pr->parsed_lines);
+
+		pr->ram_used += rc;
+
+	} else
+		pl->error = rc;
 
 	return pl;
 
 failed_no_isn:
 	pl->error = -ENOENT;
+	return pl;
+
+failed_no_memory:
+	pl->error = -ENOMEM;
 	return pl;
 
 failed_parsing:
@@ -292,3 +308,123 @@ failed_parsing:
 skip_blank:
 	return pl;
 }
+
+
+// ----- parser code -----
+
+static int x10c_parser_parse_file(struct x10c_parser *pr, FILE *in)
+{
+	char buf[1024];
+
+	while ( fgets(buf, sizeof(buf), in) ) {
+
+		char *str = trim(buf);
+		struct x10c_parsed_line *pl;
+		x10c_op_t *op;
+
+		pr->line ++;
+
+		pl = pr->ops.parse_line(pr, str, strlen(str));
+
+		op = pl->op;
+
+		printf("%-80s ; %s%-10s", str,
+				pl->label ? ":" : " ",
+				pl->label ?: "");
+
+		switch(pl->word_count) {
+		case 0:
+			printf("\n");
+			break;
+		case 1:
+			printf("%04x\n",
+					op->word[0]);
+			break;
+		case 2:
+			printf("%04x %04x\n",
+					op->word[0], op->word[1]);
+			break;
+		case 3:
+			printf("%04x %04x %04x\n",
+					op->word[0], op->word[1], op->word[2]);
+			break;
+		default:
+			printf("empty, rc=%d\n", pl->error);
+			return pl->error;
+		}
+	}
+
+	return 0;
+}
+
+static void x10c_parser_set_context (struct x10c_parser *pr,
+		const char *file, unsigned line)
+{
+	pr->file = file;
+	pr->line = line;
+}
+
+static void x10c_parser_dump(struct x10c_parser *pr, FILE *out)
+{
+	int i;
+	x10c_word *w = pr->ram;
+
+	for (i=0; i< pr->ram_used; i++) {
+		if ((i&7) == 0)
+			fprintf(out, "%04x:", i);
+		fprintf(out, " %04x", w[i]);
+		if ((i&7) == 7)
+			fprintf(out, "\n");
+	}
+	if ((i&7) != 0)
+		fprintf(out, "\n");
+
+	return;
+}
+
+static void x10c_parser_delete(struct x10c_parser *pr)
+{
+	struct x10c_parsed_line *pl, *next;
+
+	list_for_each_entry_safe(pl, next, &pr->parsed_lines, link) {
+		list_del(&pl->link);
+		x10c_parsed_line_delete(pl);
+	}
+
+	free(pr);
+}
+
+static struct x10c_parser_ops x10c_parser_ops = {
+	.parse_file  = x10c_parser_parse_file,
+	.set_context = x10c_parser_set_context,
+	.parse_line  = x10c_parser_parse_line,
+	.dump        = x10c_parser_dump,
+	.delete      = x10c_parser_delete,
+};
+
+struct x10c_parser * x10c_parser_new(const char *file,
+		x10c_word *ram, unsigned ram_words)
+{
+	struct x10c_parser *pr;
+
+	pr = calloc(1, sizeof(*pr));
+
+	list_init(&pr->parsed_lines);
+
+	pr->ram_used = 0;
+
+	if (ram) {
+		pr->ram = ram;
+		pr->ram_words = ram_words;
+		pr->ram_allocated = 0;
+	} else {
+		pr->ram_words = 0x10000;
+		pr->ram = calloc(pr->ram_words, sizeof(x10c_word));
+		pr->ram_allocated = 1;
+	}
+
+	pr->ops = x10c_parser_ops;
+
+	return pr;
+}
+

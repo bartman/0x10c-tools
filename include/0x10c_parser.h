@@ -7,7 +7,12 @@
 
 #include "0x10c_op.h"
 
+struct x10c_parsed_line;
+struct x10c_parser;
+
 struct x10c_parsed_line {
+	struct list link;
+
 	const char *file;
 	unsigned line;
 
@@ -23,11 +28,37 @@ struct x10c_parsed_line {
 	const char *label;
 };
 
-extern struct x10c_parsed_line * x10c_parse_line(x10c_op_t *op,
-		const char *file, unsigned line,
+struct x10c_parser_ops {
+	int (*parse_file)(struct x10c_parser *pr, FILE *in);
+
+	void (*set_context) (struct x10c_parser *pr,
+			const char *file, unsigned line);
+
+	struct x10c_parsed_line * (*parse_line) (struct x10c_parser *pr,
 		const char *buf, size_t buf_len);
 
-extern void x10c_parsed_line_free(struct x10c_parsed_line *pl);
+	void (*dump)(struct x10c_parser *pr, FILE *out);
+
+	void (*delete)(struct x10c_parser *pr);
+};
+
+struct x10c_parser {
+	struct list parsed_lines; // list of struct x10c_parsed_line
+
+	x10c_word *ram;
+	unsigned ram_words;
+	unsigned ram_used;
+	unsigned ram_allocated:1;
+
+	const char *file;
+	unsigned line;
+
+	struct x10c_parser_ops ops;
+};
+
+extern struct x10c_parser * x10c_parser_new(const char *name,
+		x10c_word *ram, unsigned ram_words);
+
 
 // ---- parsing helpers ----
 

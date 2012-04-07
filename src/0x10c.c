@@ -10,57 +10,28 @@
 
 int main(int argc, char *argv[])
 {
-	char buf[1024];
+	const char *filename;
+	struct x10c_parser *pr;
+	//struct x10c_parsed_line *pl;
+	struct x10c_vcpu vcpu;
 	FILE *f;
-	unsigned line;
-	struct x10c_parsed_line *pl;
 
+	filename = argv[1];
 
-	f = fopen(argv[1], "r");
+	pr = x10c_parser_new(filename, vcpu.ram, X10C_RAM_WORDS);
+	
+	f = fopen(filename, "r");
 	if (!f) {
 		fprintf(stderr, "%s: %s\n",
-				argv[1], strerror(errno));
+				filename, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	line = 0;
-	while ( fgets(buf, sizeof(buf), f) ) {
+	pr->ops.parse_file(pr, f);
 
-		char *p = trim(buf);
-		x10c_op_t op;
+	pr->ops.dump(pr, stdout);
 
-		line ++;
-
-		pl = x10c_parse_line(&op, argv[1], line, p, strlen(p));
-
-		printf("%-80s ; %s%-10s", p,
-				pl->label ? ":" : " ",
-				pl->label ?: "");
-
-		switch(pl->word_count) {
-		case 0:
-			printf("\n");
-			break;
-		case 1:
-			printf("%04x\n",
-					op.word[0]);
-			break;
-		case 2:
-			printf("%04x %04x\n",
-					op.word[0], op.word[1]);
-			break;
-		case 3:
-			printf("%04x %04x %04x\n",
-					op.word[0], op.word[1], op.word[2]);
-			break;
-		default:
-			printf("empty, rc=%d\n", pl->error);
-			return pl->error;
-		}
-
-
-		x10c_parsed_line_free(pl);
-	}
+	pr->ops.delete(pr);
 
 	return 0;
 }
