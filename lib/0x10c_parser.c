@@ -116,7 +116,7 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 
 		val = reg->reg_num;
 
-	} else {
+	} else if ( isdigit(*p) ) {
 		/* literal */
 
 		v = strtoul(p, &e, 0);
@@ -132,6 +132,14 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 			op->word[*next_word] = v;
 			(*next_word) ++;
 		}
+	} else {
+		/* reference */
+
+		dbg("  # reference %s\n", p);
+
+		val = 0x1f;
+		op->word[*next_word] = 0; // don't know what it is yet
+		(*next_word) ++;
 	}
 
 	shift = 4 + (arg_num * 6);
