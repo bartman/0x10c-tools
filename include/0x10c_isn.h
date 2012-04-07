@@ -65,7 +65,7 @@ static inline struct x10c_isn * x10c_lookup_isn_for_op(const x10c_op_t *op)
 			isn = &x10c_basic_isns[op->b.op];
 	} else {
 		if (op->x.op < X10C_XOP_MAX)
-			isn = &x10c_non_basic_isns[op->b.op];
+			isn = &x10c_non_basic_isns[op->x.op];
 	}
 
 	if (isn && isn->op_name[0])
