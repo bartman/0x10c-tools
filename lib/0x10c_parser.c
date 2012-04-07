@@ -18,8 +18,7 @@
 // ----
 
 static int x10c_parser_arg(struct x10c_parser *pr, const struct x10c_isn *isn,
-			x10c_op_t *op, int *next_word, int *unresolved,
-			char *arg, int arg_num)
+			x10c_op_t *op, int *next_word, char *arg, int arg_num)
 {
 	char *p = arg;
 	char *a, *b, *e;
@@ -141,7 +140,8 @@ static int x10c_parser_arg(struct x10c_parser *pr, const struct x10c_isn *isn,
 
 		ofs = pr->ops.find_label(pr, p);
 		if (ofs == -1)
-			*unresolved = 1;
+			pr->ops.mark_unresolved(pr, p,
+					pr->ram_used + *next_word);
 
 		val = 0x1f;
 		op->word[*next_word] = ofs;
@@ -156,7 +156,7 @@ static int x10c_parser_arg(struct x10c_parser *pr, const struct x10c_isn *isn,
 }
 
 int x10c_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf, int *unresolved)
+		x10c_op_t *op, char *buf)
 {
 	char *p = buf;
 	char *w;
@@ -170,7 +170,7 @@ int x10c_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
 
 	dbg("# a = %s\n", w);
 
-	rc = x10c_parser_arg(pr, isn, op, &next_word, unresolved, w, 0);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, w, 0);
 	if (rc<0)
 		return rc;
 
@@ -180,7 +180,7 @@ int x10c_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
 
 	dbg("# b = %s\n", w);
 
-	rc = x10c_parser_arg(pr, isn, op, &next_word, unresolved, w, 1);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, w, 1);
 	if (rc<0)
 		return rc;
 
@@ -190,7 +190,7 @@ int x10c_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
 	return next_word;
 }
 int x10c_non_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf, int *unresolved)
+		x10c_op_t *op, char *buf)
 {
 	char *p = buf;
 	char *w;
@@ -205,7 +205,7 @@ int x10c_non_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
 
 	dbg("# a = %s\n", w);
 
-	rc = x10c_parser_arg(pr, isn, op, &next_word, unresolved, w, 0);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, w, 0);
 	if (rc<0)
 		return rc;
 
@@ -296,7 +296,7 @@ static struct x10c_parsed_line * x10c_parser_parse_line (struct x10c_parser *pr,
 	dbg("# isn=%s op=%u,%u\n", pl->isn->op_name,
 			pl->isn->op_code, pl->isn->ext_op_code);
 
-	rc = pl->isn->ops.parser(pr, pl->isn, pl->op, pl->p, &pl->unresolved);
+	rc = pl->isn->ops.parser(pr, pl->isn, pl->op, pl->p);
 	if (rc >= 0) {
 		pl->word_count = rc;
 
@@ -411,8 +411,45 @@ static long x10c_parser_find_label (struct x10c_parser *pr,
 	return -1;
 }
 
-static void x10c_parser_finalize (struct x10c_parser *pr)
+struct x10c_parser_unresolved {
+	struct list link;
+	const char *name;
+	x10c_word ofs;
+};
+
+static void x10c_parser_mark_unresolved(struct x10c_parser *pr,
+		const char *name, x10c_word ofs)
 {
+	struct x10c_parser_unresolved *ur;
+
+	ur = calloc(1, sizeof(*ur));
+
+	ur->name = name;
+	ur->ofs = ofs;
+
+	list_add_tail(&ur->link, &pr->unresolved);
+}
+
+static int x10c_parser_finalize (struct x10c_parser *pr)
+{
+	struct x10c_parser_unresolved *ur, *ur_next;
+
+	list_for_each_entry_safe(ur, ur_next, &pr->unresolved, link) {
+
+		long val = pr->ops.find_label(pr, ur->name);
+		if (val == -1) {
+			fprintf(stderr, "couldn't finalize '%s' at %04x\n",
+					ur->name, ur->ofs);
+			return -ENOENT;
+		}
+
+		pr->ram[ur->ofs] = val;
+
+		list_del(&ur->link);
+		free(ur);
+	}
+
+	return 0;
 }
 
 static void x10c_parser_dump(struct x10c_parser *pr, FILE *out)
@@ -437,6 +474,7 @@ static void x10c_parser_delete(struct x10c_parser *pr)
 {
 	struct x10c_parsed_line *pl, *pl_next;
 	struct x10c_parser_label *lab, *lab_next;
+	struct x10c_parser_unresolved *ur, *ur_next;
 
 	list_for_each_entry_safe(pl, pl_next, &pr->parsed_lines, link) {
 		list_del(&pl->link);
@@ -448,6 +486,11 @@ static void x10c_parser_delete(struct x10c_parser *pr)
 		free(lab);
 	}
 
+	list_for_each_entry_safe(ur, ur_next, &pr->unresolved, link) {
+		list_del(&ur->link);
+		free(ur);
+	}
+
 	free(pr);
 }
 
@@ -457,6 +500,7 @@ static struct x10c_parser_ops x10c_parser_ops = {
 	.parse_line  = x10c_parser_parse_line,
 	.add_label   = x10c_parser_add_label,
 	.find_label  = x10c_parser_find_label,
+	.mark_unresolved = x10c_parser_mark_unresolved,
 	.finalize    = x10c_parser_finalize,
 	.dump        = x10c_parser_dump,
 	.delete      = x10c_parser_delete,
@@ -471,6 +515,7 @@ struct x10c_parser * x10c_parser_new(const char *file,
 
 	list_init(&pr->parsed_lines);
 	list_init(&pr->labels);
+	list_init(&pr->unresolved);
 
 	pr->ram_used = 0;
 

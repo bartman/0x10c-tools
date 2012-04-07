@@ -31,6 +31,10 @@ int main(int argc, char *argv[])
 
 	pr->ops.dump(pr, stdout);
 
+	pr->ops.finalize(pr);
+
+	pr->ops.dump(pr, stdout);
+
 	pr->ops.delete(pr);
 
 	return 0;

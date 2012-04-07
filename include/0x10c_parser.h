@@ -26,8 +26,6 @@ struct x10c_parsed_line {
 	unsigned word_count;
 
 	const char *label;
-
-	int unresolved;
 };
 
 struct x10c_parser_ops {
@@ -44,7 +42,10 @@ struct x10c_parser_ops {
 	long (*find_label) (struct x10c_parser *pr,
 				const char *name);
 
-	void (*finalize) (struct x10c_parser *pr);
+	void (*mark_unresolved) (struct x10c_parser *pr, const char *name,
+			x10c_word ofs);
+
+	int (*finalize) (struct x10c_parser *pr);
 
 	void (*dump)(struct x10c_parser *pr, FILE *out);
 
@@ -54,6 +55,7 @@ struct x10c_parser_ops {
 struct x10c_parser {
 	struct list parsed_lines; // list of struct x10c_parsed_line
 	struct list labels;       // list of struct x10c_parser_label
+	struct list unresolved;   // list of struct x10c_parser_unresolved
 
 	x10c_word *ram;
 	unsigned ram_words;
