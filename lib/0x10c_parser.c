@@ -8,6 +8,13 @@
 #include "0x10c_parser_lib.h"
 #include "0x10c_isn.h"
 
+#if 1
+#define dbg(f,a...) do { /* nothing */ } while(0)
+#else
+#define dbg(f,a...) printf(f,##a)
+#endif
+
+
 // ----
 
 // find a non space
@@ -28,7 +35,7 @@ static char * find_space(char *p)
 	return p;
 }
 
-static char * find_until_match(char *p, const char *match)
+static char * find_match(char *p, const char *match)
 {
 	while (*p && !strchr(match, *p))
 		p++;
@@ -36,7 +43,7 @@ static char * find_until_match(char *p, const char *match)
 	return p;
 }
 
-static char * find_while_match(char *p, const char *match)
+static char * find_no_match(char *p, const char *match)
 {
 	while (*p && strchr(match, *p))
 		p++;
@@ -73,13 +80,13 @@ static char * find_word_sep(char **pp, const char *sep)
 	if (!*w)
 		return NULL;
 
-	e = find_until_match(w, sep);
+	e = find_match(w, sep);
 	if (w == e)
 		return NULL;
 
 	*(e++) = 0;
 
-	*pp = find_while_match(e, sep);
+	*pp = find_no_match(e, sep);
 
 	return w;
 }
@@ -114,32 +121,110 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 			x10c_op_t *op, int *next_word, char *arg, int arg_num)
 {
 	char *p = arg;
-	char *w, *e;
+	char *a, *b, *e;
 	struct x10c_reg *reg;
+	unsigned long v;
 	unsigned ret = 0;
 	unsigned val;
 	unsigned shift;
 
 	if (*p == '[') {
 		/* memory reference */
+		p++;
 
-		printf("  # mref\n");
+		dbg("  # mref\n");
+
+		e = find_match(p, "+]");
+		switch (*e) {
+		case '+':
+			/* [reg+n] or [n+reg] */
+
+			*e = 0;
+			a = trim(p);
+			b = trim(e+1);
+
+			e = find_match(b, "]");
+			if (!*e)
+				return -EINVAL;
+			*e = 0;
+
+			dbg("  # a=%s\n", a);
+			dbg("  # b=%s\n", b);
+
+			if (reg = x10c_lookup_reg_for_name(a)) {
+				p = b;
+				dbg("    # reg %s/%d\n",
+						reg->reg_name, reg->reg_num);
+				val = 0x10 + reg->reg_num;
+
+			} else if (reg = x10c_lookup_reg_for_name(b)) {
+				p = a;
+				dbg("    # reg %s/%d\n",
+						reg->reg_name, reg->reg_num);
+				val = 0x10 + reg->reg_num;
+
+			} else {
+				return -EINVAL;
+			}
+
+			v = strtoul(p, &e, 0);
+			if (v > X10C_MAX_WORD_VALUE)
+				return -ERANGE;
+
+			dbg("    # literal %lu\n", v);
+
+			op->word[*next_word] = v;
+			(*next_word) ++;
+
+			break;
+		case ']':
+			/* [reg] or [n] */
+
+			*e = 0;
+			a = trim(p);
+
+			if (reg = x10c_lookup_reg_for_name(a)) {
+				/* [reg] */
+
+				dbg("    # reg %s/%d\n",
+						reg->reg_name, reg->reg_num);
+				val = 0x8 + reg->reg_num;
+
+			} else {
+				/* [n] */
+
+
+				v = strtoul(p, &e, 0);
+				if (v > X10C_MAX_WORD_VALUE)
+					return -ERANGE;
+
+				dbg("    # literal %lu\n", v);
+
+				val = 0x1e;
+				op->word[*next_word] = v;
+				(*next_word) ++;
+			}
+
+			break;
+		default:
+			return -EINVAL;
+		}
 
 	} else if (reg = x10c_lookup_reg_for_name(p)) {
 		/* register */
 
-		printf("  # reg %s/%d\n", reg->reg_name, reg->reg_num);
+		dbg("  # reg %s/%d\n", reg->reg_name, reg->reg_num);
 
 		val = reg->reg_num;
 
 	} else {
 		/* literal */
 
-		unsigned long v = strtoul(p, &e, 0);
+		v = strtoul(p, &e, 0);
 		if (v > X10C_MAX_WORD_VALUE)
 			return -ERANGE;
 
-		printf("  # literal %lu\n", v);
+		dbg("  # literal %lu\n", v);
 
 		if (v < 0x20) {
 			val = 0x20 + v;
@@ -170,7 +255,7 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 	if (!w)
 		return -EINVAL;
 
-	printf("# a = %s\n", w);
+	dbg("# a = %s\n", w);
 
 	rc = x10c_parser_arg(isn, op, &next_word, w, 0);
 	if (rc<0)
@@ -180,13 +265,13 @@ int x10c_basic_parser(const struct x10c_isn *isn,
 	if (!w)
 		return -EINVAL;
 
-	printf("# b = %s\n", w);
+	dbg("# b = %s\n", w);
 
 	rc = x10c_parser_arg(isn, op, &next_word, w, 1);
 	if (rc<0)
 		return rc;
 
-	printf("# rc=%d [ %04x %04x %04x ]\n", next_word,
+	dbg("# rc=%d [ %04x %04x %04x ]\n", next_word,
 			op->word[0], op->word[1], op->word[2]);
 
 	return next_word;
@@ -205,7 +290,7 @@ int x10c_non_basic_parser(const struct x10c_isn *isn,
 	if (!w)
 		return -EINVAL;
 
-	printf("# a = %s\n", w);
+	dbg("# a = %s\n", w);
 
 	rc = x10c_parser_arg(isn, op, &next_word, w, 0);
 	if (rc<0)
@@ -222,7 +307,7 @@ int x10c_parse_line(x10c_op_t *op, const char *buf, size_t buf_len)
 	char *w;
 	const struct x10c_isn *isn;
 
-	printf("# %s\n", buf_copy);
+	dbg("# %s\n", buf_copy);
 
 	w = find_word(&p);
 	if (!w) {
@@ -236,7 +321,7 @@ int x10c_parse_line(x10c_op_t *op, const char *buf, size_t buf_len)
 		goto bail;
 	}
 
-	printf("# isn=%s op=%u,%u\n", isn->op_name,
+	dbg("# isn=%s op=%u,%u\n", isn->op_name,
 			isn->op_code, isn->ext_op_code);
 
 	rc = isn->ops.parser(isn, op, p);
