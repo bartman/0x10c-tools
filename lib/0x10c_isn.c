@@ -36,7 +36,9 @@ struct x10c_isn x10c_basic_isns[X10C_OP_MAX] = {
 /* non-basic operation handling */
 
 #define X10C_NON_BASIC_ISN_ENTRY(OP) \
-	[X10C_XOP_##OP] = { __stringify(OP), X10C_XOP_##OP, 0, 2, \
+	[X10C_XOP_##OP] = { .op_name     = __stringify(OP), \
+		.op_code     = X10C_OP_NON_BASIC, \
+		.ext_op_code = X10C_XOP_##OP, 2, \
 		.ops = { .parser = x10c_non_basic_parser, \
 			.generator = x10c_non_basic_generator, \
 			.execute = x10c_execute_##OP } }

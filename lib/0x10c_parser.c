@@ -205,7 +205,7 @@ int x10c_non_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
 
 	dbg("# a = %s\n", w);
 
-	rc = x10c_parser_arg(pr, isn, op, &next_word, w, 0);
+	rc = x10c_parser_arg(pr, isn, op, &next_word, w, 1);
 	if (rc<0)
 		return rc;
 
