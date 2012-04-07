@@ -10,10 +10,11 @@
 
 int main(int argc, char *argv[])
 {
-	int rc;
-	x10c_op_t op;
 	char buf[1024];
 	FILE *f;
+	unsigned line;
+	struct x10c_parsed_line *pl;
+
 
 	f = fopen(argv[1], "r");
 	if (!f) {
@@ -22,32 +23,43 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	line = 0;
 	while ( fgets(buf, sizeof(buf), f) ) {
 
 		char *p = trim(buf);
+		x10c_op_t op;
 
-		memset(&op, 0, sizeof(op));
-		rc = x10c_parse_line(&op, p, strlen(p));
-		switch(rc) {
+		line ++;
+
+		pl = x10c_parse_line(&op, argv[1], line, p, strlen(p));
+
+		printf("%-80s ; %s%-10s", p,
+				pl->label ? ":" : " ",
+				pl->label ?: "");
+
+		switch(pl->word_count) {
 		case 0:
-			printf("%-80s ;\n", "");
+			printf("\n");
 			break;
 		case 1:
-			printf("%-80s ; %04x\n", p,
+			printf("%04x\n",
 					op.word[0]);
 			break;
 		case 2:
-			printf("%-80s ; %04x %04x\n", p,
+			printf("%04x %04x\n",
 					op.word[0], op.word[1]);
 			break;
 		case 3:
-			printf("%-80s ; %04x %04x %04x\n", p,
+			printf("%04x %04x %04x\n",
 					op.word[0], op.word[1], op.word[2]);
 			break;
 		default:
-			printf("%-80s ; rc=%d\n", p, rc);
-			return rc;
+			printf("empty, rc=%d\n", pl->error);
+			return pl->error;
 		}
+
+
+		x10c_parsed_line_free(pl);
 	}
 
 	return 0;

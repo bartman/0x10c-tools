@@ -24,7 +24,6 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 	char *a, *b, *e;
 	struct x10c_reg *reg;
 	unsigned long v;
-	unsigned ret = 0;
 	unsigned val;
 	unsigned shift;
 
@@ -51,13 +50,13 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 			dbg("  # a=%s\n", a);
 			dbg("  # b=%s\n", b);
 
-			if (reg = x10c_lookup_reg_for_name(a)) {
+			if ( (reg = x10c_lookup_reg_for_name(a)) ) {
 				p = b;
 				dbg("    # reg %s/%d\n",
 						reg->reg_name, reg->reg_num);
 				val = 0x10 + reg->reg_num;
 
-			} else if (reg = x10c_lookup_reg_for_name(b)) {
+			} else if ( (reg = x10c_lookup_reg_for_name(b)) ) {
 				p = a;
 				dbg("    # reg %s/%d\n",
 						reg->reg_name, reg->reg_num);
@@ -83,7 +82,7 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 			*e = 0;
 			a = trim(p);
 
-			if (reg = x10c_lookup_reg_for_name(a)) {
+			if ( (reg = x10c_lookup_reg_for_name(a)) ) {
 				/* [reg] */
 
 				dbg("    # reg %s/%d\n",
@@ -110,7 +109,7 @@ static int x10c_parser_arg(const struct x10c_isn *isn,
 			return -EINVAL;
 		}
 
-	} else if (reg = x10c_lookup_reg_for_name(p)) {
+	} else if ( (reg = x10c_lookup_reg_for_name(p)) ) {
 		/* register */
 
 		dbg("  # reg %s/%d\n", reg->reg_name, reg->reg_num);
@@ -199,47 +198,97 @@ int x10c_non_basic_parser(const struct x10c_isn *isn,
 	return next_word;
 }
 
-int x10c_parse_line(x10c_op_t *op, const char *buf, size_t buf_len)
+static struct x10c_parsed_line * x10c_parsed_line_new(x10c_op_t *op,
+		const char *file, unsigned line,
+		const char *buf, size_t buf_len)
+{
+	struct x10c_parsed_line *pl;
+
+	pl = calloc(1, sizeof(*pl));
+
+	pl->file = file;
+	pl->line = line;
+
+	pl->buffer = strndup(buf, buf_len);
+	pl->p = trim(pl->buffer);
+
+	op->word[0] = 0;
+
+	pl->op = op;
+
+	return pl;
+}
+
+void x10c_parsed_line_free(struct x10c_parsed_line *pl)
+{
+	free(pl);
+}
+
+struct x10c_parsed_line * x10c_parse_line(x10c_op_t *op,
+		const char *file, unsigned line,
+		const char *buf, size_t buf_len)
 {
 	int rc;
-	char *buf_copy = strndup(buf, buf_len);
-	char *p = trim(buf_copy);
+	struct x10c_parsed_line *pl;
 	char *w;
-	const struct x10c_isn *isn;
 
-	dbg("# %s\n", p);
+	pl = x10c_parsed_line_new(op, file, line, buf, buf_len);
 
-	w = find_word(&p);
-	if (!w) {
-		rc = -EINVAL;
-		goto bail;
+	dbg("# %s\n", pl->p);
+
+	w = find_word(&pl->p);
+
+	if (w && *w == ':') {
+		// label
+		if (w[1]) {
+			pl->label = w+1;
+		} else {
+			w = find_word(&pl->p);
+			if (!w)
+				goto failed_parsing;
+			pl->label = w;
+		}
+
+		w = find_word(&pl->p);
 	}
 
-	switch (*w) {
+	switch (w ? *w : 0) {
 	case 0:
 	case ';':
 	case '#':
-		return 0;
+		// empty line, just space, or a comment
+		goto skip_blank;
 	case ':':
-		// later
-		break;
+		// second label on one line not allowed
+		goto failed_parsing;
 	default:
 		// needs more parsing
 		break;
 	}
 
-	isn = x10c_lookup_isn_for_name(w);
-	if (!isn) {
-		rc = -EINVAL;
-		goto bail;
-	}
+	pl->isn = x10c_lookup_isn_for_name(w);
+	if (!pl->isn)
+		goto failed_no_isn;
 
-	dbg("# isn=%s op=%u,%u\n", isn->op_name,
-			isn->op_code, isn->ext_op_code);
+	dbg("# isn=%s op=%u,%u\n", pl->isn->op_name,
+			pl->isn->op_code, pl->isn->ext_op_code);
 
-	rc = isn->ops.parser(isn, op, p);
+	rc = pl->isn->ops.parser(pl->isn, pl->op, pl->p);
+	if (rc < 0)
+		pl->error = rc;
+	else
+		pl->word_count = rc;
 
-bail:
-	free(buf_copy);
-	return rc;
+	return pl;
+
+failed_no_isn:
+	pl->error = -ENOENT;
+	return pl;
+
+failed_parsing:
+	pl->error = -EINVAL;
+	return pl;
+
+skip_blank:
+	return pl;
 }

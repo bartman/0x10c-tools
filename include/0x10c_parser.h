@@ -2,10 +2,31 @@
 #define __included_0x10c_parser_h__
 
 #include <unistd.h>
+#include <ctype.h>
 
 #include "0x10c_op.h"
 
-extern int x10c_parse_line(x10c_op_t *op, const char *buf, size_t buf_len);
+struct x10c_parsed_line {
+	const char *file;
+	unsigned line;
+
+	char *buffer;
+	char *p;
+
+	int error;
+
+	const struct x10c_isn *isn;
+	x10c_op_t *op;
+	unsigned word_count;
+
+	const char *label;
+};
+
+extern struct x10c_parsed_line * x10c_parse_line(x10c_op_t *op,
+		const char *file, unsigned line,
+		const char *buf, size_t buf_len);
+
+extern void x10c_parsed_line_free(struct x10c_parsed_line *pl);
 
 // ---- parsing helpers ----
 
