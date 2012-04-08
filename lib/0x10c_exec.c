@@ -151,7 +151,7 @@ int x10c_execute_JSR(const struct x10c_isn *isn, const x10c_op_t *op,
 		x10c_word *a, x10c_word *b, struct x10c_vcpu *vcpu)
 {
 	/* push address of next instruction onto the stack */
-	vcpu->ram [ vcpu->sr.sp ++ ] = vcpu->sr.pc;
+	vcpu->ram [ --vcpu->sr.sp ] = vcpu->sr.pc;
 
 	/* set the program counter to a */
 	vcpu->sr.pc = *a;
