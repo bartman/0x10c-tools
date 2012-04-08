@@ -67,7 +67,9 @@ typedef uint16_t x10c_word;
 #define X10C_ARG_LITERAL_BASE 0x20
 #define X10C_ARG_LITERAL(n) (X10C_ARG_LITERAL_BASE + n)
 
-
+/* are comparisons case sensitive? */
+#define X10C_OP_NAME_CMP  strcasecmp
+#define X10C_REG_NAME_CMP strcasecmp
 
 
 #endif // __included_0x10c_def_h__

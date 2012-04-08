@@ -54,13 +54,13 @@ struct x10c_isn * x10c_lookup_isn_for_name(const char *name)
 
 	for (i=0; i<X10C_OP_MAX; i++) {
 		isn = &x10c_basic_isns[i];
-		if (isn->op_name && !strcmp(isn->op_name, name))
+		if (isn->op_name && !X10C_OP_NAME_CMP(isn->op_name, name))
 			return isn;
 	}
 
 	for (i=0; i<X10C_XOP_MAX; i++) {
 		isn = &x10c_non_basic_isns[i];
-		if (isn->op_name && !strcmp(isn->op_name, name))
+		if (isn->op_name && !X10C_OP_NAME_CMP(isn->op_name, name))
 			return isn;
 	}
 
@@ -96,7 +96,7 @@ struct x10c_reg * x10c_lookup_reg_for_name(const char *name)
 
 	for (i=0; i<X10C_REGS_MAX; i++) {
 		reg = & x10c_regs[i];
-		if (reg->reg_name && !strcmp(reg->reg_name, name))
+		if (reg->reg_name && !X10C_REG_NAME_CMP(reg->reg_name, name))
 			return reg;
 	}
 
