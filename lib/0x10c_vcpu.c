@@ -6,8 +6,9 @@
 
 #include "0x10c_vcpu.h"
 #include "0x10c_isn.h"
+#include "0x10c_generator.h"
 
-#if 0
+#if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
 #else
 #define dbg(f,a...) printf(f,##a)
@@ -100,6 +101,9 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 {
 	int rc;
 
+	vcpu->ops.dump(NULL, stdout);
+	vcpu->ops.dump(vcpu, stdout);
+
 	for(;;) {
 		x10c_word old_pc;
 
@@ -109,6 +113,8 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 		if (rc<0)
 			return rc;
 
+		vcpu->ops.dump(vcpu, stdout);
+
 		if (old_pc == vcpu->sr.pc)
 			return -EINTR;
 	}
@@ -116,6 +122,24 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 
 static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 {
+#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP ---O  SK  ISN...\n"
+#define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x  %s  %s\n"
+
+	if (vcpu) {
+		char buf[1024];
+
+		x10c_generate_line(buf, sizeof(buf),
+				x10c_vcpu_current_op(vcpu));
+
+		fprintf(out, DUMP_FMT,
+				vcpu->gr.a, vcpu->gr.b, vcpu->gr.c,
+				vcpu->gr.x, vcpu->gr.y, vcpu->gr.z,
+				vcpu->gr.i, vcpu->gr.j,
+				vcpu->sr.pc, vcpu->sr.sp, vcpu->sr.o,
+				vcpu->skip_next_op ? "sk" : "  ",
+				buf);
+	} else
+		fprintf(out, DUMP_HDR);
 }
 
 static void x10c_vcpu_delete (struct x10c_vcpu *vcpu)
