@@ -122,13 +122,17 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 
 static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 {
-#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP ---O  SK  ISN...\n"
-#define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x  %s  %s\n"
+#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP ---O  SK  OP------------- ISN------------------------------\n"
+#define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x  %s  %-15s %s\n"
 
 	if (vcpu) {
-		char buf[1024];
+		char hex_buf[1024];
+		char asm_buf[1024];
 
-		x10c_generate_line(buf, sizeof(buf),
+		x10c_generate_hex(hex_buf, sizeof(hex_buf),
+				x10c_vcpu_current_op(vcpu));
+
+		x10c_generate_asm(asm_buf, sizeof(asm_buf),
 				x10c_vcpu_current_op(vcpu));
 
 		fprintf(out, DUMP_FMT,
@@ -137,7 +141,7 @@ static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 				vcpu->gr.i, vcpu->gr.j,
 				vcpu->sr.pc, vcpu->sr.sp, vcpu->sr.o,
 				vcpu->skip_next_op ? "sk" : "  ",
-				buf);
+				hex_buf, asm_buf);
 	} else
 		fprintf(out, DUMP_HDR);
 }

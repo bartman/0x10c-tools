@@ -3,6 +3,7 @@
 
 #include "0x10c_generator.h"
 #include "0x10c_generator_lib.h"
+#include "0x10c_parser.h"
 
 #include "0x10c_isn.h"
 
@@ -100,7 +101,30 @@ bail:
 	return buf;
 }
 
-char * x10c_generate_line(char *buf, size_t buf_len,
+char * x10c_generate_hex(char *buf, size_t buf_len,
+		const x10c_op_t *op)
+{
+	char *p = buf;
+	char *e = buf + buf_len;
+	unsigned cnt = x10c_op_len(op);
+	const x10c_word *words = op->word;
+
+	switch(cnt) {
+	case 3:
+		append("%04x ", *(words++));
+	case 2:
+		append("%04x ", *(words++));
+	case 1:
+		append("%04x ", *(words++));
+	default:
+		break;
+	}
+
+bail:
+	return trim(buf);
+}
+
+char * x10c_generate_asm(char *buf, size_t buf_len,
 		const x10c_op_t *op)
 {
 	struct x10c_isn *isn;
