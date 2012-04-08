@@ -91,9 +91,10 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 		rc = isn->ops.execute(isn, op, a, b, vcpu);
 		if (rc<0)
 			return rc;
+	} else {
+		vcpu->skip_next_op = 0;
 	}
 
-	vcpu->skip_next_op = 0;
 
 	return 0;
 }
