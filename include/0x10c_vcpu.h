@@ -30,7 +30,7 @@ struct x10c_vcpu {
 	union {
 		x10c_word n[3];
 		struct {
-			x10c_word pc, sp, o;
+			x10c_word sp, pc, o;
 		};
 	} sr;
 
