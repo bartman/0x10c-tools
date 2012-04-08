@@ -6,6 +6,7 @@
 
 #include "0x10c_vcpu.h"
 #include "0x10c_isn.h"
+#include "0x10c_util.h"
 #include "0x10c_generator.h"
 
 #if 1

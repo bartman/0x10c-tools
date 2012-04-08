@@ -7,6 +7,7 @@
 #include "0x10c_parser.h"
 #include "0x10c_parser_lib.h"
 #include "0x10c_isn.h"
+#include "0x10c_util.h"
 
 #if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
@@ -462,18 +463,7 @@ static int x10c_parser_finalize (struct x10c_parser *pr)
 
 static void x10c_parser_dump(struct x10c_parser *pr, FILE *out)
 {
-	int i;
-	x10c_word *w = pr->ram;
-
-	for (i=0; i< pr->ram_used; i++) {
-		if ((i&7) == 0)
-			fprintf(out, "%04x:", i);
-		fprintf(out, " %04x", w[i]);
-		if ((i&7) == 7)
-			fprintf(out, "\n");
-	}
-	if ((i&7) != 0)
-		fprintf(out, "\n");
+	x10c_dump(out, pr->ram, pr->ram_used);
 
 	return;
 }
