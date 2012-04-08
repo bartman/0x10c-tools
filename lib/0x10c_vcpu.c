@@ -84,8 +84,13 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 	// consume this word
 	vcpu->sr.pc ++;
 
-	a = x10c_vcpu_get_isn_arg(vcpu, op->b.a, &tmp_a);
-	b = x10c_vcpu_get_isn_arg(vcpu, op->b.b, &tmp_b);
+	if (x10c_op_is_basic(op)) {
+		a = x10c_vcpu_get_isn_arg(vcpu, op->b.a, &tmp_a);
+		b = x10c_vcpu_get_isn_arg(vcpu, op->b.b, &tmp_b);
+	} else {
+		a = x10c_vcpu_get_isn_arg(vcpu, op->x.a, &tmp_a);
+		b = NULL;
+	}
 
 	if (!vcpu->skip_next_op) {
 		rc = isn->ops.execute(isn, op, a, b, vcpu);
