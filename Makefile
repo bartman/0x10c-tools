@@ -17,8 +17,11 @@ $(SUBDIR_ACTIONS:%=do-%): do-%:
 ${SUBDIR_TARGETS}:
 	${MAKE} -C $(dir $@) $(filter-out all,$(notdir $@))
 
-all clean distclean: 
-	@echo local $@
+all clean:
+	# nothing to do for local $@
+
+distclean: clean
+	-rm -f cscope.files cscope.out tags
 
 .PHONY: help
 
