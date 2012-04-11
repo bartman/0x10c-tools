@@ -1,5 +1,14 @@
 #!/usr/bin/lua
 
+local lpeg = require 'lpeg'
+local locale = lpeg.locale();
+local P, R, S, C = lpeg.P, lpeg.R, lpeg.S
+local C, Cc, Ct, Cg = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg
+
+package.path = './lua/?.lua;' .. package.path
+local D = require 'dcpu16'
+
+
 local debug_level = 0
 local function dbg(l,...)
         if debug_level >= l then
@@ -35,178 +44,6 @@ end
 local function xxxx(num)
         return string.format("%04x", num)
 end
-
-local lpeg = require 'lpeg'
-local locale = lpeg.locale();
-local P, R, S, C = lpeg.P, lpeg.R, lpeg.S
-local C, Cc, Ct, Cg = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg
-
-local whitespace = S' \t\v\n\f'
-local w0 = whitespace^0
-local w1 = whitespace^1
-
-local comma = P","
-
-local digit = R('09')
-
-local digit = R'09'
-local letter = R('az', 'AZ') + P'_'
-local alphanum = letter + digit
-local hex = R('af', 'AF', '09')
-local exp = S'eE' * S'+-'^-1 * digit^1
-local fs = S'fFlL'
-local is = S'uUlL'^0
-
-local hexnum = P'0' * S'xX' * hex^1 * is^-1
-local octnum = P'0' * digit^1 * is^-1
-local decnum = digit^1 * is^-1
-local floatnum = digit^1 * exp * fs^-1 +
-                 digit^0 * P'.' * digit^1 * exp^-1 * fs^-1 +
-                 digit^1 * P'.' * digit^0 * exp^-1 * fs^-1
-local numlit = hexnum + octnum + floatnum + decnum
-
-local numlit_cg = Cg(numlit, "numlit")
-
-local charlit =
-  P'L'^-1 * P"'" * (P'\\' * P(1) + (1 - S"\\'"))^1 * P"'"
-
-local stringlit =
-  P'L'^-1 * P'"' * (P'\\' * P(1) + (1 - S'\\"'))^0 * P'"'
-
-local literal = (numlit + charlit + stringlit)
-
-local comment = P';' * (1 - P'\n')^0
-
--- opcodes
-
-local gop = (
-  P"SET" +
-  P"ADD" +
-  P"SUB" +
-  P"MUL" +
-  P"DIV" +
-  P"MOD" +
-  P"SHL" +
-  P"SHR" +
-  P"AND" +
-  P"BOR" +
-  P"XOR" +
-  P"IFE" +
-  P"IFN" +
-  P"IFG" +
-  P"IFB" +
-  P"IFB"
-)
-
-local jsr_op = P"JSR"
-
-local sop = (
-  jsr_op
-)
-
--- "generic register"
-local greg = (
-  P"A" +
-  P"B" +
-  P"C" +
-  P"X" +
-  P"Y" +
-  P"Z" +
-  P"I" +
-  P"J"
-)
-local greg_c = C( greg )
-
--- "special register"
-local sreg = (
-  P"POP" +
-  P"PEEK" +
-  P"PUSH" +
-  P"SP" +
-  P"PC" +
-  P"O"
-)
-local sreg_c = C( sreg )
-
-local reg = greg + sreg
-local reg_cg = Cg(reg, "reg")
-
--- "memory reference"
-local mref = P"[" * w0 * (
-                      ( reg * w0 * P"+" * w0 * numlit )
-                    + ( numlit * w0 * P"+" * w0 * reg )
-                    + ( reg )
-                    + ( numlit )
-                  ) * w0 * P"]"
-local mref_c = C( mref )
-
-local mref_ct = Ct( P"[" * w0 * (
-                      ( reg_cg * w0 * P"+" * w0 * numlit_cg )
-                    + ( numlit_cg * w0 * P"+" * w0 * reg_cg )
-                    + ( reg_cg )
-                    + ( numlit_cg )
-                  ) * w0 * P"]" )
-
--- symbolic stuff: keywords, variables, lables, etc
-local keywords = gop + sop + reg
-
-local variable = (locale.alpha + P "_") * (locale.alnum + P "_")^0 - ( keywords )
-
-local label = P":" * variable
-
-local label_c = P":" * C( variable )
-
--- instruction opcodes take arguments
-
-local oparg = reg + numlit + variable + mref
-local oparg_c = C( oparg )
-
--- "generic instruction"
-local gisn_c = C(gop) * w1 * C(oparg) * w0 * comma * w0 * oparg_c
-
--- "extended instruction"
-local jsr_arg = numlit + variable
-local jsr_isn_c = C(jsr_op) * w1 * C(jsr_arg)
-local xisn_c = jsr_isn_c
-
-local isn_c = gisn_c + xisn_c
-
--- lexer
-
-local lexer = {
-        finalize = function(self)
-                os.exit(0)
-        end,
-        output = function(self, file)
-                os.exit(0)
-        end,
-}
-
-local lex_actions = {
-        comment  = function(...) print('COMMENT', ...) end,
-        literal  = function(...) print('LITERAL', ...) end,
-        comma    = function(...) print('COMMA', ...) end,
-        gop      = function(...) print('GOP', ...) end,
-        sop      = function(...) print('SOP', ...) end,
-        greg     = function(...) print('GREG', ...) end,
-        sreg     = function(...) print('SREG', ...) end,
-        mref     = function(...) print('MREF', ...) end,
-        variable = function(...) print('VAR', ...) end,
-        label    = function(...) print('LABEL', ...) end
-}
-
-lexer.matcher = ( comment       / lex_actions.comment
-                + literal       / lex_actions.literal
-                + P","          / lex_actions.comma
-                + C( gop )      / lex_actions.gop
-                + C( sop )      / lex_actions.sop
-                + greg_c        / lex_actions.greg
-                + C( sreg )     / lex_actions.sreg
-                + mref_c         / lex_actions.mref
-                + C( variable ) / lex_actions.variable
-                + C( label )    / lex_actions.label
-                + whitespace
-                )^0
 
 -- assembler
 
@@ -319,7 +156,7 @@ function assemble_isn_arg(arg, isn, mult)
         local num = 0
 
         local rc = lpeg.match(
-        ( greg / function()
+        ( D.greg / function()
                 local gr = generic_registers[arg]
                 dbg(3,"", "greg", arg)
                 if not gr then
@@ -327,7 +164,7 @@ function assemble_isn_arg(arg, isn, mult)
                 end
                 num = gr.num
         end
-        + sreg / function()
+        + D.sreg / function()
                 local sr = special_registers[arg]
                 dbg(3,"", "sreg", arg)
                 if not sr then
@@ -335,7 +172,7 @@ function assemble_isn_arg(arg, isn, mult)
                 end
                 num = sr.num
         end
-        + numlit / function()
+        + D.numlit / function()
                 dbg(3,"", "numlit", arg)
                 local n = tonumber(arg)
                 if n >= 0 and n < 0x20 then
@@ -345,7 +182,7 @@ function assemble_isn_arg(arg, isn, mult)
                         isn.words[#isn.words + 1] = n
                 end
         end
-        + variable / function()
+        + D.variable / function()
                 dbg(3,"", "variable", arg)
 
                 local ofs = assembler.vars[arg]
@@ -358,8 +195,8 @@ function assemble_isn_arg(arg, isn, mult)
                 num = 0x1f
                 isn.words[#isn.words + 1] = ofs
         end
-        + mref / function()
-                local t = lpeg.match(mref_ct, arg)
+        + D.mref / function()
+                local t = lpeg.match(D.mref_ct, arg)
                 if not t then
                         die("don't know how to encode mref '"..arg.."'")
                 end
@@ -522,17 +359,18 @@ local assembler_actions = {
         end
 }
 
-assembler.matcher = ( comment       / assembler_actions.comment
-                    + gisn_c        / assembler_actions.gisn
-                    + xisn_c        / assembler_actions.xisn
-                    + label_c       / assembler_actions.label
-                    + whitespace
+assembler.matcher = ( D.comment       / assembler_actions.comment
+                    + D.gisn_c        / assembler_actions.gisn
+                    + D.xisn_c        / assembler_actions.xisn
+                    + D.label_c       / assembler_actions.label
+                    + D.whitespace
                     )^0
 
 -- parse command line
 
 local filename
 local handler
+local output='-'
 
 local i = 1
 while i<=#arg do
@@ -543,18 +381,12 @@ while i<=#arg do
                 print ''
                 print ' -h --help                         - this help'
                 print ' -v --verbose                      - be more verbose'
-                print ' -l --lex <file>                   - run lexer on a file'
                 print ' -a --assemble <file>              - run assembler a file'
                 print ' -o --output <file>                - write output here'
                 os.exit(0)
 
         elseif a == "-v" or a == "--verbose" then
                 debug_level = debug_level + 1
-
-        elseif a == "-l" or a == "--lex" then
-                handler = lexer
-                filename = arg[i]
-                i = i + 1
 
         elseif a == "-a" or a == "--assemble" then
                 handler = assembler
