@@ -121,7 +121,8 @@ mref_ct = Ct( P"[" * w0 * (
 -- symbolic stuff: keywords, variables, lables, etc
 keywords = gop + sop + reg
 
-variable = (locale.alpha + P "_") * (locale.alnum + P "_")^0 - ( keywords )
+--variable = (locale.alpha + P"_") * (locale.alnum + P"_")^0 - ( keywords )
+variable = ( (R'AZ' + R'az' + P"_") * (R'AZ' + R'az' + R'09' + P"_")^0 ) - keywords
 
 label = P":" * variable
 
@@ -162,7 +163,7 @@ local _mrefp = V'mrefp'
 local _mref = V'mref'
 
 grammar = lpeg.P{ 'line',
-        line    = _lisn^-1 * w0 * _comment^-1;
+        line    = w0 * _lisn^-1 * w0 * _comment^-1;
         lisn    = Ct(_label * w1 * _isn) + _isn;
         comment = C(semi * (1 - eol)^0);
         isn     = _gisn + _sisn;
@@ -181,4 +182,7 @@ grammar = lpeg.P{ 'line',
         num     = numlit / tonumber;
 }
 
+function parse(program)
+        return lpeg.match(grammar, program)
+end
 
