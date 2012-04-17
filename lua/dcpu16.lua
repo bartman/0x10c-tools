@@ -162,6 +162,11 @@ local _num = V'num'
 local _mrefp = V'mrefp'
 local _mref = V'mref'
 
+local function token(id, patt)
+        --return Ct(Cc(id) * C(patt))
+        return Ct(Cc(id) * C(patt))
+end
+
 grammar = lpeg.P{ 'line',
         line    = w0 * _lisn^-1 * w0 * _comment^-1;
         lisn    = Ct(_label * w1 * _isn) + _isn;
@@ -169,17 +174,18 @@ grammar = lpeg.P{ 'line',
         isn     = _gisn + _sisn;
         gisn    = Ct(_gop * w1 * _oparg * comma * _oparg);
         sisn    = Ct(_sop * w1 * _oparg);
-        label   = C(colon * variable);
+        label   = token('label', colon * variable);
         var     = C(variable);
-        gop     = C(gop);
-        sop     = C(sop);
+        gop     = token('gop', gop);
+        sop     = token('sop', sop);
         oparg   = _reg + _num + _mref;
         reg     = _greg + _sreg;
-        greg    = C(greg);
-        sreg    = C(sreg);
+        greg    = token('greg', greg);
+        sreg    = token('sreg', sreg);
         mrefp   = (_greg * plus * _num) + (_num * plus * _greg) + _greg + _num;
-        mref    = Ct(P'['*w0 * _mrefp * w0*P']');
-        num     = numlit / tonumber;
+        --mref    = Ct(P'['*w0 * _mrefp * w0*P']');
+        mref    = token('mref', P'['*w0 * _mrefp * w0*P']');
+        num     = token('num', numlit / tonumber);
 }
 
 function parse(program)
