@@ -122,6 +122,7 @@ local _line_cmnt  = V'line_cmnt';
 local _oparg      = V'oparg';
 local _mref       = V'mref';
 local _mrefarg    = V'mrefarg';
+local _var        = V'var';
 local _reg        = V'reg';
 local _greg       = V'greg';
 local _sreg       = V'sreg';
@@ -144,7 +145,7 @@ local grammar = P{'line',
                       token('a', _oparg);
         line_cmnt   = token('comment', semi * (1 - eol)^0);
         --
-        oparg       = ( _num + _reg + _mref ) / build_table;
+        oparg       = ( _num + _reg + _mref + _var ) / build_table;
         --
         mref        = token('mref', P'[' * w0 * _mrefarg * w0 * P']' );
         mrefarg     = ( ( _greg * plus * _num )
@@ -155,6 +156,7 @@ local grammar = P{'line',
         greg        = token('greg', greg);
         sreg        = token('sreg', sreg);
         num         = token('num', numlit);
+        var         = token('var', variable);
 }
 
 function parse(program)

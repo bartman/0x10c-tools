@@ -44,6 +44,8 @@ function test()
         parse (':foo SET A, B')
         parse ('SET A, [A]')
         parse ('SET A, [1+A]')
+        parse ('SET A, variable')
+        parse (':xxx SET A, variable ; comment')
 
         --[[
         local f = assert(io.open('examples/sample.dasm', 'r'))
