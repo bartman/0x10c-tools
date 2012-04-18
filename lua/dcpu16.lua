@@ -16,25 +16,13 @@ local colon = w0 * P":" * w0
 local semi = w0 * P";" * w0
 local eol = S '\r\n\f'
 local digit = R'09'
-local letter = R('az', 'AZ') + P'_'
-local alphanum = letter + digit
 local hex = R('af', 'AF', '09')
-local exp = S'eE' * S'+-'^-1 * digit^1
 
---local is = S'uUlL'^0
-hexnum = P'0' * S'xX' * hex^1 -- * is^-1
-octnum = P'0' * digit^1 -- * is^-1
-decnum = digit^1 -- * is^-1
+hexnum = P'0' * S'xX' * hex^1
+octnum = P'0' * digit^1
+decnum = digit^1
 
---[[
-local fs = S'fFlL'
-local floatnum = digit^1 * exp * fs^-1 +
-                 digit^0 * P'.' * digit^1 * exp^-1 * fs^-1 +
-                 digit^1 * P'.' * digit^0 * exp^-1 * fs^-1
-]]--
-numlit = hexnum + octnum + decnum -- + floatnum
-
---numlit_cg = Cg(numlit, "numlit")
+numlit = hexnum + octnum + decnum
 
 charlit =
   P'L'^-1 * P"'" * (P'\\' * P(1) + (1 - S"\\'"))^1 * P"'"
@@ -44,7 +32,7 @@ stringlit =
 
 literal = (numlit + charlit + stringlit)
 
-comment = P';' * (1 - P'\n')^0
+comment = semi * (1 - P'\n')^0
 
 -- opcodes
 
@@ -67,14 +55,15 @@ gop = (
   P"IFB"
 )
 
-jsr_op = P"JSR"
-
 sop = (
-  jsr_op
+  P"JSR"
 )
 
--- "generic register"
-greg = (
+op = gop + sop
+
+-- registers
+
+greg = ( -- "generic register"
   P"A" +
   P"B" +
   P"C" +
@@ -84,10 +73,8 @@ greg = (
   P"I" +
   P"J"
 )
---greg_c = C( greg )
 
--- "special register"
-sreg = (
+sreg = ( -- "special register"
   P"POP" +
   P"PEEK" +
   P"PUSH" +
@@ -95,97 +82,79 @@ sreg = (
   P"PC" +
   P"O"
 )
---sreg_c = C( sreg )
 
 reg = greg + sreg
---reg_cg = Cg(reg, "reg")
-
--- "memory reference"
-mref = P"[" * w0 * (
-                      ( reg * w0 * P"+" * w0 * numlit )
-                    + ( numlit * w0 * P"+" * w0 * reg )
-                    + ( reg )
-                    + ( numlit )
-                  ) * w0 * P"]"
---mref_c = C( mref )
-
---[[
-mref_ct = Ct( P"[" * w0 * (
-                      ( reg_cg * w0 * P"+" * w0 * numlit_cg )
-                    + ( numlit_cg * w0 * P"+" * w0 * reg_cg )
-                    + ( reg_cg )
-                    + ( numlit_cg )
-                  ) * w0 * P"]" )
-]]--
 
 -- symbolic stuff: keywords, variables, lables, etc
 keywords = gop + sop + reg
 
---variable = (locale.alpha + P"_") * (locale.alnum + P"_")^0 - ( keywords )
-variable = ( (R'AZ' + R'az' + P"_") * (R'AZ' + R'az' + R'09' + P"_")^0 ) - keywords
+variable = (locale.alpha + P"_") * (locale.alnum + P"_")^0 -- - keywords
 
-label = P":" * variable
-
---label_c = P":" * C( variable )
-
--- instruction opcodes take arguments
-
-oparg = reg + numlit + variable + mref
---oparg_c = C( oparg )
-
--- "generic instruction"
---gisn_c = C(gop) * w1 * C(oparg) * w0 * comma * w0 * oparg_c
-
--- "extended instruction"
-jsr_arg = numlit + variable
-jsr_isn_c = C(jsr_op) * w1 * C(jsr_arg)
-xisn_c = jsr_isn_c
-
---isn_c = gisn_c + xisn_c
-
--- the full grammar
-
-local _comment = V'comment'
-local _lisn = V'lisn'
-local _isn = V'isn'
-local _gisn = V'gisn'
-local _sisn = V'sisn'
-local _label = V'label'
-local _var = V'var'
-local _gop = V'gop'
-local _sop = V'sop'
-local _oparg = V'oparg'
-local _reg = V'reg'
-local _greg = V'greg'
-local _sreg = V'sreg'
-local _num = V'num'
-local _mrefp = V'mrefp'
-local _mref = V'mref'
+-- grammar construction functions
 
 local function token(id, patt)
-        --return Ct(Cc(id) * C(patt))
         return Ct(Cc(id) * C(patt))
 end
 
-grammar = lpeg.P{ 'line',
-        line    = w0 * _lisn^-1 * w0 * _comment^-1;
-        lisn    = Ct(_label * w1 * _isn) + _isn;
-        comment = C(semi * (1 - eol)^0);
-        isn     = _gisn + _sisn;
-        gisn    = Ct(_gop * w1 * _oparg * comma * _oparg);
-        sisn    = Ct(_sop * w1 * _oparg);
-        label   = token('label', colon * variable);
-        var     = C(variable);
-        gop     = token('gop', gop);
-        sop     = token('sop', sop);
-        oparg   = _reg + _num + _mref;
-        reg     = _greg + _sreg;
-        greg    = token('greg', greg);
-        sreg    = token('sreg', sreg);
-        mrefp   = (_greg * plus * _num) + (_num * plus * _greg) + _greg + _num;
-        --mref    = Ct(P'['*w0 * _mrefp * w0*P']');
-        mref    = token('mref', P'['*w0 * _mrefp * w0*P']');
-        num     = token('num', numlit / tonumber);
+local function build_table(...)
+        local t = { }
+        local bad = {}
+        -- io.stderr:write(DataDumper({...},'>> ').."\n")
+        for i,v in ipairs({...}) do
+                if type(v) == 'table' then
+                        -- t['_'..v[1]] = v[2]
+                        t[v[1]] = v[#v]
+                else
+                        table.insert(bad, v)
+                end
+        end
+        if #bad > 0 then t['error'] = bad end
+        return t
+end
+
+-- grammar variables
+
+local _line       = V'line';
+local _line_label = V'line_label';
+local _line_gisn  = V'line_gisn';
+local _line_sisn  = V'line_sisn';
+local _line_cmnt  = V'line_cmnt';
+local _oparg      = V'oparg';
+local _mref       = V'mref';
+local _mrefarg    = V'mrefarg';
+local _reg        = V'reg';
+local _greg       = V'greg';
+local _sreg       = V'sreg';
+local _num        = V'num';
+
+-- the full grammar
+
+local grammar = P{'line',
+        line        = ( _line_label^-1
+                      * w0
+                      * (_line_gisn + _line_sisn)^-1
+                      * w0
+                      * _line_cmnt^-1
+                      * -1 ) / build_table;
+        line_label  = colon * token('label', variable);
+        line_gisn   = token('op', gop) * w1 * 
+                      token('a', _oparg) * comma * 
+                      token('b', _oparg);
+        line_sisn   = token('op', sop) * w1 * 
+                      token('a', _oparg);
+        line_cmnt   = token('comment', semi * (1 - eol)^0);
+        --
+        oparg       = ( _num + _reg + _mref ) / build_table;
+        --
+        mref        = token('mref', P'[' * w0 * _mrefarg * w0 * P']' );
+        mrefarg     = ( ( _greg * plus * _num )
+                      + ( _num * plus * _greg )
+                      + _num + _greg ) / build_table;
+        --
+        reg         = _greg + _sreg;
+        greg        = token('greg', greg);
+        sreg        = token('sreg', sreg);
+        num         = token('num', numlit);
 }
 
 function parse(program)
