@@ -7,14 +7,15 @@ local C, Cc, Ct, Cg, Cf = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg, lpeg.Cf
 
 module(..., package.seeall)
 
-local whitespace = S' \t\v\n\f'
+local whitespace = S' \t\v'
 local w0 = whitespace^0
 local w1 = whitespace^1
 local comma = w0 * P"," * w0
 local plus = w0 * P"+" * w0
 local colon = w0 * P":" * w0
 local semi = w0 * P";" * w0
-local eol = S '\r\n\f'
+local hash = w0 * P"#" * w0
+local eol = S'\r\n\f'
 local digit = R'09'
 local hex = R('af', 'AF', '09')
 
@@ -99,12 +100,12 @@ end
 local function build_table(...)
         local t = { }
         local bad = {}
-        -- io.stderr:write(DataDumper({...},'>> ').."\n")
+        io.stderr:write(DataDumper({...},'>> ').."\n")
         for i,v in ipairs({...}) do
                 if type(v) == 'table' then
                         -- t['_'..v[1]] = v[2]
                         t[v[1]] = v[#v]
-                else
+                elseif v ~= nil and v ~= '' then
                         table.insert(bad, v)
                 end
         end
@@ -114,7 +115,8 @@ end
 
 -- grammar variables
 
-local _line       = V'line';
+local _program    = V'program';
+local _block      = V'block';
 local _line_label = V'line_label';
 local _line_gisn  = V'line_gisn';
 local _line_sisn  = V'line_sisn';
@@ -130,13 +132,43 @@ local _num        = V'num';
 
 -- the full grammar
 
-local grammar = P{'line',
-        line        = ( _line_label^-1
-                      * w0
-                      * (_line_gisn + _line_sisn)^-1
-                      * w0
-                      * _line_cmnt^-1
-                      * -1 ) / build_table;
+local line = 1
+local function inc_line(...)
+        line = line + 1
+end
+
+local function fold_line(a,b)
+        if type(b) ~= 'table' then
+                -- no code generated
+                return a
+        end
+
+        b['line'] = line
+
+        if type(a) == 'table' then
+                -- this is every line
+                table.insert(a, b)
+                return a
+        else
+                -- this is the start token
+                return { b }
+        end
+end
+
+program = Cf(Cc('start') * _block * (eol/inc_line * _block)^0 * -1, fold_line)
+
+local grammar = P{'program',
+        program      = program;
+        --[[
+        Cf(_block + _program^-1 + -1, function(...)
+                io.stderr:write(DataDumper({...},'program>> ').."\n")
+                return {...}
+        end);
+        ]]--
+        block        = ( _line_label^-1
+                      * (w0 * (_line_gisn + _line_sisn))^-1
+                      * (w0 * _line_cmnt)^-1
+                      ) / build_table;
         line_label  = colon * token('label', variable);
         line_gisn   = token('op', gop) * w1 * 
                       token('a', _oparg) * comma * 
@@ -160,6 +192,7 @@ local grammar = P{'line',
 }
 
 function parse(program)
+        line = 1
         return lpeg.match(grammar, program)
 end
 
