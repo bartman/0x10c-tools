@@ -100,7 +100,7 @@ end
 local function build_table(...)
         local t = { }
         local bad = {}
-        io.stderr:write(DataDumper({...},'>> ').."\n")
+        --io.stderr:write(DataDumper({...},'>> ').."\n")
         for i,v in ipairs({...}) do
                 if type(v) == 'table' then
                         -- t['_'..v[1]] = v[2]
@@ -111,6 +111,13 @@ local function build_table(...)
         end
         if #bad > 0 then t['error'] = bad end
         return t
+end
+
+local function table_empty (self)
+        for _, _ in pairs(self) do
+                return false
+        end
+        return true
 end
 
 -- grammar variables
@@ -138,7 +145,7 @@ local function inc_line(...)
 end
 
 local function fold_line(a,b)
-        if type(b) ~= 'table' then
+        if type(b) ~= 'table' or table_empty(b) then
                 -- no code generated
                 return a
         end
@@ -155,25 +162,21 @@ local function fold_line(a,b)
         end
 end
 
-program = Cf(Cc('start') * _block * (eol/inc_line * _block)^0 * -1, fold_line)
-
 local grammar = P{'program',
-        program      = program;
-        --[[
-        Cf(_block + _program^-1 + -1, function(...)
-                io.stderr:write(DataDumper({...},'program>> ').."\n")
-                return {...}
-        end);
-        ]]--
+        program      = Cf(Cc('start') -- need a starting token for folding
+                          * _block
+                          * (eol/inc_line * _block)^0
+                          * -1,
+                         fold_line);
         block        = ( _line_label^-1
-                      * (w0 * (_line_gisn + _line_sisn))^-1
-                      * (w0 * _line_cmnt)^-1
-                      ) / build_table;
+                       * (w0 * (_line_gisn + _line_sisn))^-1
+                       * (w0 * _line_cmnt)^-1
+                       ) / build_table;
         line_label  = colon * token('label', variable);
-        line_gisn   = token('op', gop) * w1 * 
-                      token('a', _oparg) * comma * 
+        line_gisn   = token('op', gop) * w1 *
+                      token('a', _oparg) * comma *
                       token('b', _oparg);
-        line_sisn   = token('op', sop) * w1 * 
+        line_sisn   = token('op', sop) * w1 *
                       token('a', _oparg);
         line_cmnt   = token('comment', semi * (1 - eol)^0);
         --
