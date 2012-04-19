@@ -50,6 +50,10 @@ function test()
         parse ("SET A, B\nxxx")
         parse ("SET A, B\nSET B, A")
         parse ("SET A, B\n\nSET B, A")
+        parse ("SET x,POP")
+        parse ("#macro pop(x){\n SET x,POP\n}")
+        parse ("#macro pop(x){\n SET x,POP\n}\npop(A)")
+
 
         --[[
         local f = assert(io.open('examples/sample.dasm', 'r'))

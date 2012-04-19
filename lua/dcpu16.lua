@@ -124,6 +124,9 @@ end
 
 local _program    = V'program';
 local _block      = V'block';
+local _directive  = V'directive';
+local _dir_macro  = V'dir_macro';
+local _line       = V'line';
 local _line_label = V'line_label';
 local _line_gisn  = V'line_gisn';
 local _line_sisn  = V'line_sisn';
@@ -163,12 +166,18 @@ local function fold_line(a,b)
 end
 
 local grammar = P{'program',
-        program      = Cf(Cc('start') -- need a starting token for folding
+        program     = Cf(Cc('start') -- need a starting token for folding
                           * _block
                           * (eol/inc_line * _block)^0
                           * -1,
                          fold_line);
-        block        = ( _line_label^-1
+        block       = _directive + _line;
+        directive   = _dir_macro;
+        dir_macro   = #hash * P'macro' * w0 * token('macro', variable) * w0 * P'(' * variable * P')'
+                       * (w0 + eol/inc_line) * P'{'
+                           * _block * (eol/inc_line * _block)^0
+                       * (w0 + eol/inc_line) * P'}';
+        line        = ( _line_label^-1
                        * (w0 * (_line_gisn + _line_sisn))^-1
                        * (w0 * _line_cmnt)^-1
                        ) / build_table;
