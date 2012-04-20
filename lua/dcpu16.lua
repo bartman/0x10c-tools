@@ -9,7 +9,7 @@ local D = {}
 local lpeg = require 'lpeg'
 local locale = lpeg.locale();
 local P, R, S, V = lpeg.P, lpeg.R, lpeg.S, lpeg.V
-local C, Cc, Ct, Cg, Cf = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg, lpeg.Cf
+local C, Cc, Ct, Cg, Cf, Cmt = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg, lpeg.Cf, lpeg.Cmt
 
 ------------------------------------------------------------------------
 -- grammar variables
@@ -110,6 +110,7 @@ local _line_label = V'line_label';
 local _line_gisn  = V'line_gisn';
 local _line_sisn  = V'line_sisn';
 local _line_cmnt  = V'line_cmnt';
+local _line_error = V'line_error';
 local _oparg      = V'oparg';
 local _mref       = V'mref';
 local _mrefarg    = V'mrefarg';
@@ -140,7 +141,8 @@ function D.new()
 
         -- the new class and private variables
         local t = {}
-        local line = 1
+        local ct_line = 1
+        local error_line = nil
 
         ------------------------------------------------------------------------
         -- grammar construction functions
@@ -168,7 +170,7 @@ function D.new()
                         return a
                 end
 
-                b['line'] = line
+                b['line'] = ct_line
 
                 if type(a) == 'table' then
                         -- this is every line
@@ -180,11 +182,16 @@ function D.new()
                 end
         end
 
-        -- keep track of line numbers
-        local function inc_line(...)
-                line = line + 1
+        local function mark_error(...)
+                if not error_line then error_line = ct_line end
+                return "error at word '"..(tostring(...)).."'"
         end
-        local eol_inc_line = eol/inc_line
+
+        -- keep track of line numbers
+        local function inc_ct_line(...)
+                ct_line = ct_line + 1
+        end
+        local eol_inc_line = eol/inc_ct_line
 
         ------------------------------------------------------------------------
         -- the full grammar
@@ -204,7 +211,7 @@ function D.new()
                 line        = ( _line_label^-1
                                * (w0 * (_line_gisn + _line_sisn))^-1
                                * (w0 * _line_cmnt)^-1
-                               ) / build_table;
+                               * _line_error^0) / build_table;
                 line_label  = colon * token('label', variable);
                 line_gisn   = token('op', gop) * w1 *
                               token('a', _oparg) * comma *
@@ -212,6 +219,7 @@ function D.new()
                 line_sisn   = token('op', sop) * w1 *
                               token('a', _oparg);
                 line_cmnt   = token('comment', semi * (1 - eol)^0);
+                line_error  = (P(1) - w1 - eol)^1/mark_error;
                 --
                 oparg       = ( _num + _reg + _mref + _var ) / build_table;
                 --
@@ -229,11 +237,17 @@ function D.new()
 
         -- reset line
         function t.reset(self, program)
-                line = 1
+                ct_line = 1
+                error_line = nil
         end
 
         function t.parse(self, program)
-                return lpeg.match(grammar, program)
+                local r = lpeg.match(grammar, program)
+                if error_line then
+                        io.stderr:write("ERROR: parsing line "..(tostring(error_line)).."\n")
+                        return r, false
+                end
+                return r, true
         end
 
         function t.newparse(self, program)
