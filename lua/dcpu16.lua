@@ -110,10 +110,12 @@ local _line       = V'line';
 local _line_label = V'line_label';
 local _line_gisn  = V'line_gisn';
 local _line_sisn  = V'line_sisn';
-local _line_macro = V'line_macro';
+local _line_expnd = V'line_expnd';
+local _expnd_args = V'expnd_args';
 local _line_cmnt  = V'line_cmnt';
 local _error      = V'error';
 local _oparg      = V'oparg';
+local _opargtb    = V'opargtb';
 local _mref       = V'mref';
 local _mrefarg    = V'mrefarg';
 local _var        = V'var';
@@ -203,11 +205,10 @@ function D.new()
                 end
 
                 if b[1] == 'expanded_block' then
-                        -- macro expansion
+                        -- macro expansion, passthrough after first entry
                         for i,v in ipairs(b) do
                                 if i>1 then
                                         table.insert(a, v)
-
                                 end
                         end
                         return a
@@ -243,49 +244,86 @@ function D.new()
                         end
                 end
 
+                io.stderr:write(DataDumper(m.vars,'    fm>> vars=').."\n")
                 return m
         end
 
-        -- this 
+        local function expand_macro_line(s, vars)
+                local lookup_table = {}
+                local function _copy(obj)
+                        if type(obj) ~= "table" then
+                                return obj
+                        end
+                        if obj.var and vars[obj.var] then
+                                obj = vars[obj.var]
+                        end
+                        if lookup_table[obj] then
+                                return lookup_table[obj]
+                        end
+                        local new_table = {}
+                        lookup_table[obj] = new_table
+                        for index, value in pairs(obj) do
+                                new_table[_copy(index)] = _copy(value)
+                        end
+                        return new_table
+                end
+                return _copy(s)
+        end
+
+        -- this function handles expansion of a macro
         local function fold_expansion(a,b)
                 io.stderr:write("--fold_expansion--\n")
                 io.stderr:write(DataDumper(a,'    fe>> a=').."\n")
                 io.stderr:write(DataDumper(b,'    fe>> b=').."\n")
 
-                local m
+                local x
                 if type(a) == 'table' and a[1] == 'macro_ex_start' then
-                        m = { line=ct_line, macro=a[2], vars={} }
+                        x = { line=ct_line, macro=a[2], vars={} }
                 else
-                        m = a
+                        x = a
                 end
 
                 if type(b) == 'table' then
-                        if b.var then
-                                table.insert(m.vars, b.var)
+                        if b.num or b.greg or b.sreg or b.mref or b.var then
+                                table.insert(x.vars, b)
+
                         elseif b[1] == 'macro_ex_end' then
                                 io.stderr:write("lookup!\n")
 
-                                local M = macros[m.macro]
+                                local m = macros[x.macro]
 
-                                if not M then
-                                        return set_error("no macro by name '"..m.macro.."' found.")
+                                if not m then
+                                        return set_error("no macro by name '"..x.macro.."' found.")
+                                end
+
+                                if #m.vars ~= #x.vars then
+                                        return set_error("macro '"..m.macro.."' expects "..tostring(#m.vars)..
+                                                        " arguments, but "..tostring(#x.vars).." were given.")
+                                end
+
+                                local vars={}
+                                for i,v in ipairs(m.vars) do
+                                        vars[v] = x.vars[i]
                                 end
 
                                 io.stderr:write("found!\n")
-                                io.stderr:write(DataDumper(M.code,'    fe>> code=').."\n")
+                                io.stderr:write(DataDumper(vars,'    fe>> vars=').."\n")
+                                io.stderr:write(DataDumper(m.code,'    fe>> code=').."\n")
 
                                 local r = { 'expanded_block' }
 
-                                for i,v in ipairs(M.code) do
+                                for i,v in ipairs(m.code) do
 
-                                        table.insert(r, v)
+                                        local w = expand_macro_line(v, vars)
+
+                                        table.insert(r, w)
                                 end
 
                                 return r
                         end
                 end
 
-                return m
+                return x
         end
 
         -- matched something unexpected
@@ -332,19 +370,21 @@ end
                 macro_args  = w0 * _var/build_table * (comma * _var/build_table)^0 * w0;
                 --
                 line        = ( _line_label^-1
-                               * (w0 * (_line_gisn + _line_sisn + _line_macro))^-1
+                               * (w0 * (_line_gisn + _line_sisn + _line_expnd))^-1
                                * (w0 * _line_cmnt)^-1) / build_table;
                 line_label  = colon * token('label', variable);
                 line_gisn   = token('op', gop) * w1 *
-                              token('a', _oparg) * comma *
-                              token('b', _oparg);
+                              token('a', _opargtb) * comma *
+                              token('b', _opargtb);
                 line_sisn   = token('op', sop) * w1 *
-                              token('a', _oparg);
+                              token('a', _opargtb);
                 line_cmnt   = token('comment', semi * (1 - eol)^0);
                 --
-                line_macro  = Cf(token('macro_ex_start', variable) * P'(' * _macro_args * token('macro_ex_end',P')'), fold_expansion);
+                line_expnd  = Cf(token('macro_ex_start', variable) * w0 * P'(' * _expnd_args * token('macro_ex_end',P')'), fold_expansion);
+                expnd_args  = w0 * _oparg/build_table * (comma * _oparg/build_table)^0 * w0;
                 --
-                oparg       = ( _num + _reg + _mref + _var ) / build_table;
+                oparg       = _num + _reg + _mref + _var;
+                opargtb     = ( _oparg ) / build_table;
                 --
                 mref        = token('mref', P'[' * w0 * _mrefarg * w0 * P']' );
                 mrefarg     = ( ( _greg * plus * _num )
