@@ -54,10 +54,10 @@ function test()
         parse ("SET A, B\n\nSET B, A")
         parse ("SET x,POP")
         ]]--
-        --parse ("#macro pop(x){\nSET x,POP\n}")
-        --parse ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}")
-        --parse ("#macro pop(x){\n SET x,POP\n}\nSET A, 1")
-        --parse ("#macro pop(x){\n SET x,POP\n}\npop(A)")
+        parse ("#macro pop(x){\nSET x,POP\n}")
+        parse ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}")
+        parse ("#macro pop(x){\n SET x,POP\n}\nSET A, 1")
+        parse ("#macro pop(x){\n SET x,POP\n}\npop(A)")
         parse ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}\npop2(A,B)")
 
 

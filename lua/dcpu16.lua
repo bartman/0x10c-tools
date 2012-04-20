@@ -166,10 +166,9 @@ function D.new()
                 local s = {...}
                 local t = { }
                 local bad = { }
-                --io.stderr:write(DataDumper({...},'bt>> ').."\n")
-                io.stderr:write("--build_table--\n")
+                --io.stderr:write("--build_table--\n")
                 for i,v in ipairs(s) do
-                        io.stderr:write(DataDumper({i=i, v=v},'    bt>> ').."\n")
+                        --io.stderr:write(DataDumper({i=i, v=v},'    bt>> ').."\n")
                         if type(v) == 'table' and v[1] then
                                 if v[1] == 'expanded_block' then
                                         -- expansion of a macro, no need to do anything else
@@ -182,15 +181,15 @@ function D.new()
                         end
                 end
                 if #bad > 0 then t['error'] = bad end
-                        io.stderr:write(DataDumper(t,'    bt>> ').."\n")
+                --io.stderr:write(DataDumper(t,'    bt>> ').."\n")
                 return t
         end
 
         -- folding is the process of taking multiple blocks and creating a list out of them
         local function fold_line(a,b)
-                io.stderr:write("--fold_line--\n")
-                io.stderr:write(DataDumper(a,'    fl>> a=').."\n")
-                io.stderr:write(DataDumper(b,'    fl>> b=').."\n")
+                --io.stderr:write("--fold_line--\n")
+                --io.stderr:write(DataDumper(a,'    fl>> a=').."\n")
+                --io.stderr:write(DataDumper(b,'    fl>> b=').."\n")
 
                 if type(b) ~= 'table' or table_empty(b) then
                         -- no code generated
@@ -221,9 +220,9 @@ function D.new()
 
         -- collect all the bits of a macro definition
         local function fold_macro(a,b)
-                io.stderr:write("--fold_macro--\n")
-                io.stderr:write(DataDumper(a,'    fm>> a=').."\n")
-                io.stderr:write(DataDumper(b,'    fm>> b=').."\n")
+                --io.stderr:write("--fold_macro--\n")
+                --io.stderr:write(DataDumper(a,'    fm>> a=').."\n")
+                --io.stderr:write(DataDumper(b,'    fm>> b=').."\n")
 
                 local m
                 if type(a) == 'table' and a[1] == 'macro_start' then
@@ -244,7 +243,7 @@ function D.new()
                         end
                 end
 
-                io.stderr:write(DataDumper(m.vars,'    fm>> vars=').."\n")
+                --io.stderr:write(DataDumper(m.vars,'    fm>> vars=').."\n")
                 return m
         end
 
@@ -272,9 +271,9 @@ function D.new()
 
         -- this function handles expansion of a macro
         local function fold_expansion(a,b)
-                io.stderr:write("--fold_expansion--\n")
-                io.stderr:write(DataDumper(a,'    fe>> a=').."\n")
-                io.stderr:write(DataDumper(b,'    fe>> b=').."\n")
+                --io.stderr:write("--fold_expansion--\n")
+                --io.stderr:write(DataDumper(a,'    fe>> a=').."\n")
+                --io.stderr:write(DataDumper(b,'    fe>> b=').."\n")
 
                 local x
                 if type(a) == 'table' and a[1] == 'macro_ex_start' then
@@ -288,7 +287,7 @@ function D.new()
                                 table.insert(x.vars, b)
 
                         elseif b[1] == 'macro_ex_end' then
-                                io.stderr:write("lookup!\n")
+                                --io.stderr:write("lookup!\n")
 
                                 local m = macros[x.macro]
 
@@ -306,9 +305,9 @@ function D.new()
                                         vars[v] = x.vars[i]
                                 end
 
-                                io.stderr:write("found!\n")
-                                io.stderr:write(DataDumper(vars,'    fe>> vars=').."\n")
-                                io.stderr:write(DataDumper(m.code,'    fe>> code=').."\n")
+                                --io.stderr:write("found!\n")
+                                --io.stderr:write(DataDumper(vars,'    fe>> vars=').."\n")
+                                --io.stderr:write(DataDumper(m.code,'    fe>> code=').."\n")
 
                                 local r = { 'expanded_block' }
 
@@ -324,6 +323,15 @@ function D.new()
                 end
 
                 return x
+        end
+
+        -- used for debugging only
+        local function dbg(pat)
+                return Cmt(pat,function(s,i,cap)
+                        local txt = DataDumper(cap, '')
+                        io.stderr:write("### dbg: ["..tostring(mt_line).."] '"..txt.."'\n")
+                        return i,cap
+                end)
         end
 
         -- matched something unexpected
@@ -345,16 +353,8 @@ function D.new()
         ------------------------------------------------------------------------
         -- the full grammar
 
-local function dbg(pat)
-        return Cmt(pat,function(s,i,cap)
-                local txt = DataDumper(cap, '')
-                io.stderr:write("### dbg: ["..tostring(mt_line).."] '"..txt.."'\n")
-                return i,cap
-        end)
-end
-
         local grammar = P{'program',
-                program     = Cf(Cc('start') -- need a starting token for folding
+                program     = Cf(Cc('start_program') -- need a starting token for folding
                                   * _block
                                   * (eol_inc_line * _block)^0
                                   * -1,
@@ -364,8 +364,8 @@ end
                 directive   = _dir_macro; -- / build_table;
                 dir_macro   = Cf(hash * P'macro' * w1 * token('macro_start', variable) * w0 * P'(' * _macro_args * P')'
                                * wcr0 * P'{' * wcr0
-                                        * dbg(_line)
-                                        * (eol_inc_line * dbg(_line))^0
+                                        * _line
+                                        * (eol_inc_line * _line)^0
                                * wcr0 * token('macro_end', P'}'), fold_macro);
                 macro_args  = w0 * _var/build_table * (comma * _var/build_table)^0 * w0;
                 --
@@ -410,6 +410,10 @@ end
 
         function t.parse(self, program)
                 local r = lpeg.match(grammar, program)
+                if r == 'start_program' then
+                        io.stderr:write("WARNING: parsing generated no code\n")
+                        return nil, false
+                end
                 if error_line then
                         io.stderr:write("ERROR: parsing line "..(tostring(error_line))..": "..error_msg.."\n")
                         return r, false
