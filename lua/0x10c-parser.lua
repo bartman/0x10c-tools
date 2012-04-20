@@ -11,8 +11,9 @@ end
 
 --
 
+local d = D.new()
 function parse(program)
-        dump(D.parse(program), '"'..program..'"  =>  ')
+        dump(d:newparse(program), '"'..program..'"  =>  ')
 end
 function test()
         parse ('SET A, B')
@@ -80,5 +81,3 @@ else
         print 'provide a single file'
         os.exit(0)
 end
-
-        
