@@ -107,8 +107,14 @@ local special_reg_names = { "POP", "PEEK", "PUSH", "SP", "PC", "O" }
 local greg = P(word_match(generic_reg_names, '', true))
 local sreg = P(word_match(special_reg_names, '', true))
 
+-- data definitions
+
+local data_names = { "DAT" }
+
+local data = P(word_match(data_names, '', true))
+
 -- symbolic stuff: keywords, variables, lables, etc
-local keywords = gop + sop + greg + sreg
+local keywords = gop + sop + greg + sreg + data
 
 local variable = (locale.alpha + P"_") * (locale.alnum + P"_")^0 -- - keywords
 
@@ -126,6 +132,8 @@ local _line_gisn  = V'line_gisn';
 local _line_sisn  = V'line_sisn';
 local _line_expnd = V'line_expnd';
 local _expnd_args = V'expnd_args';
+local _line_data  = V'line_data';
+local _data_arg   = V'data_arg';
 local _line_cmnt  = V'line_cmnt';
 local _error      = V'error';
 local _oparg      = V'oparg';
@@ -137,6 +145,8 @@ local _reg        = V'reg';
 local _greg       = V'greg';
 local _sreg       = V'sreg';
 local _num        = V'num';
+local _str        = V'str';
+local _data       = V'data';
 
 ------------------------------------------------------------------------
 -- create a new instance of the parser, in a private closure
@@ -369,9 +379,10 @@ function D.new()
                                * wcr0 * token('macro_end', P'}'), fold_macro);
                 macro_args  = w0 * _var/build_table * (comma * _var/build_table)^0 * w0;
                 --
-                line        = ( _line_label^-1
-                               * (w0 * (_line_gisn + _line_sisn + _line_expnd))^-1
-                               * (w0 * _line_cmnt)^-1) / build_table;
+                line        = w0 * ( _line_label^-1
+                               * (w0 * (_line_gisn + _line_sisn + _line_expnd + _line_data))^-1
+                               * (w0 * _line_cmnt)^-1) / build_table
+                               * w0;
                 line_label  = colon * token('label', variable);
                 line_gisn   = token('op', gop) * w1 *
                               token('a', _opargtb) * comma *
@@ -382,6 +393,9 @@ function D.new()
                 --
                 line_expnd  = Cf(token('macro_ex_start', variable) * w0 * P'(' * _expnd_args * token('macro_ex_end',P')'), fold_expansion);
                 expnd_args  = w0 * _oparg/build_table * (comma * _oparg/build_table)^0 * w0;
+                --
+                line_data   = _data * w1 * _data_arg * (comma * _data_arg)^0 * w0;
+                data_arg    = _num + _str;
                 --
                 oparg       = _num + _reg + _mref + _var;
                 opargtb     = ( _oparg ) / build_table;
@@ -395,7 +409,10 @@ function D.new()
                 greg        = token('greg', greg);
                 sreg        = token('sreg', sreg);
                 num         = token('num', numlit);
+                str         = token('str', stringlit);
                 var         = token('var', variable);
+                --
+                data        = token('data', data);
                 --
                 error       = (P(1) - w1 - eol)^1/mark_error;
         }
