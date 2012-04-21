@@ -83,6 +83,10 @@ function test()
         good ("#macro pop(x){\n SET x,POP\n}\npop(A)")
         good ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}\npop2(A,B)")
         good ("   jsr setup_drawBackBuffer     ")
+        good (" ifg [buttonPushTimer], 0")
+    	good ("set A, 1")
+    	good ("set A, '='")
+    	good ('set A, "="')
 
 
         --[[

@@ -78,8 +78,8 @@ local decnum = digit^1
 
 local numlit = hexnum + octnum + decnum
 
-local charlit =
-  P'L'^-1 * P"'" * (P'\\' * P(1) + (1 - S"\\'"))^1 * P"'"
+local charlit = ( P'L'^-1 * P"'" * (P'\\' * P(1) + (1 - S"\\'"))^1 * P"'" )
+              + ( P'L'^-1 * P'"' * (P'\\' * P(1) + (1 - S"\\\""))^1 * P'"' )
 
 local stringlit =
   P'L'^-1 * P'"' * (P'\\' * P(1) + (1 - S'\\"'))^0 * P'"'
@@ -146,6 +146,7 @@ local _greg       = V'greg';
 local _sreg       = V'sreg';
 local _num        = V'num';
 local _str        = V'str';
+local _char       = V'char';
 local _data       = V'data';
 
 ------------------------------------------------------------------------
@@ -408,8 +409,9 @@ function D.new()
                 reg         = _greg + _sreg;
                 greg        = token('greg', greg);
                 sreg        = token('sreg', sreg);
-                num         = token('num', numlit);
+                num         = token('num', numlit) + _var + _char;
                 str         = token('str', stringlit);
+                char        = token('char', charlit);
                 var         = token('var', variable);
                 --
                 data        = token('data', data);
