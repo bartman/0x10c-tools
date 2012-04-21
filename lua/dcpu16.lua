@@ -116,7 +116,10 @@ local data = P(word_match(data_names, '', true))
 -- symbolic stuff: keywords, variables, lables, etc
 local keywords = gop + sop + greg + sreg + data
 
-local variable = (locale.alpha + P"_") * (locale.alnum + P"_")^0 -- - keywords
+local names = ((locale.alpha + P"_") * (locale.alnum + P"_")^0)
+
+local macro_name  = names                    -- macro names can be anything
+local variable_name = names - (greg + sreg)  -- labels cannot clash with registers
 
 ------------------------------------------------------------------------
 -- grammar variables
@@ -347,6 +350,7 @@ function D.new()
 
         -- matched something unexpected
         local function mark_error(...)
+                io.stderr:write("--mark_error--\n")
                 return set_error("error at word '"..(tostring(...)).."'")
         end
 
@@ -361,19 +365,28 @@ function D.new()
         end)/inc_ct_line
         local wcr0 = w0 * eol_inc_line^0 * w0
 
+        -- mark reaching end
+        local end_reached = false
+        local function mark_end(...)
+                io.stderr:write("--mark_end--\n")
+                end_reached = true
+                return ...
+        end
+
         ------------------------------------------------------------------------
         -- the full grammar
 
         local grammar = P{'program',
                 program     = Cf(Cc('start_program') -- need a starting token for folding
                                   * _block
-                                  * (eol_inc_line * _block)^0
-                                  * -1,
-                                 fold_line);
+                                  * (eol_inc_line * _block)^0,
+                                  fold_line)
+                               --* #(P(-1)/mark_end)
+                               * -1;
                 block       = _directive + _line + _error^0;
                 --
                 directive   = _dir_macro; -- / build_table;
-                dir_macro   = Cf(hash * P'macro' * w1 * token('macro_start', variable) * w0 * P'(' * _macro_args * P')'
+                dir_macro   = Cf(hash * P'macro' * w1 * token('macro_start', macro_name) * w0 * P'(' * _macro_args * P')'
                                * wcr0 * P'{' * wcr0
                                         * _line
                                         * (eol_inc_line * _line)^0
@@ -381,10 +394,10 @@ function D.new()
                 macro_args  = w0 * _var/build_table * (comma * _var/build_table)^0 * w0;
                 --
                 line        = w0 * ( _line_label^-1
-                               * (w0 * (_line_gisn + _line_sisn + _line_expnd + _line_data))^-1
+                               * (w0 * (_line_gisn + _line_sisn + _line_data + _line_expnd))^-1
                                * (w0 * _line_cmnt)^-1) / build_table
                                * w0;
-                line_label  = colon * token('label', variable);
+                line_label  = colon * token('label', variable_name);
                 line_gisn   = token('op', gop) * w1 *
                               token('a', _opargtb) * comma *
                               token('b', _opargtb);
@@ -392,19 +405,19 @@ function D.new()
                               token('a', _opargtb);
                 line_cmnt   = token('comment', semi * (1 - eol)^0);
                 --
-                line_expnd  = Cf(token('macro_ex_start', variable) * w0 * P'(' * _expnd_args * token('macro_ex_end',P')'), fold_expansion);
+                line_expnd  = Cf(token('macro_ex_start', macro_name) * w0 * P'(' * _expnd_args * token('macro_ex_end',P')'), fold_expansion);
                 expnd_args  = w0 * _oparg/build_table * (comma * _oparg/build_table)^0 * w0;
                 --
                 line_data   = _data * w1 * _data_arg * (comma * _data_arg)^0 * w0;
-                data_arg    = _num + _str;
+                data_arg    = _str + _num;
                 --
-                oparg       = _num + _reg + _mref + _var;
+                oparg       = _reg + _mref + _num + _var;
                 opargtb     = ( _oparg ) / build_table;
                 --
                 mref        = token('mref', P'[' * w0 * _mrefarg * w0 * P']' );
                 mrefarg     = ( ( _greg * plus * _num )
                               + ( _num * plus * _greg )
-                              + _num + _greg ) / build_table;
+                              + _greg + _num ) / build_table;
                 --
                 reg         = _greg + _sreg;
                 greg        = token('greg', greg);
@@ -412,7 +425,7 @@ function D.new()
                 num         = token('num', numlit) + _var + _char;
                 str         = token('str', stringlit);
                 char        = token('char', charlit);
-                var         = token('var', variable);
+                var         = token('var', variable_name);
                 --
                 data        = token('data', data);
                 --
@@ -427,20 +440,25 @@ function D.new()
                 error_msg = nil
         end
 
-        function t.parse(self, program)
+        function t.parse(self, program, debug)
                 local r = lpeg.match(grammar, program)
-                if r == 'start_program' then
-                        local msg = "WARNING: parsing generated no code"
-                        return nil, true, msg
-                end
                 if error_line then
                         local msg = "ERROR: parsing line "..(tostring(error_line))..": "..error_msg
                         return r, false, msg
                 end
+                if r == 'start_program' then
+                        local msg = "WARNING: parsing generated no code"
+                        return nil, true, msg
+                end
                 if not r then
                         local msg = "ERROR: parsing stopped at line "..(tostring(mt_line))
-                        return nil, false, msg
+                        return r, false, msg
                 end
+
+                if debug then
+                        dump(r, '"'..program..'"  =>  ')
+                end
+
                 return r, true
         end
 
