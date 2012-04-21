@@ -99,9 +99,11 @@ if #arg == 1 then
         local d = D.new()
         local f = assert(io.open(arg[1]))
         local program = f:read'*all'
-        local res = d:newparse(program)
+        local res, suc, msg = d:newparse(program)
         dump(res, '"'..program..'"  =>  ')
         f:close()
+        if msg then print("\n"..msg.."\n") end
+        if not suc then os.exit(1) end
 elseif #arg == 0 then
         test()
 else
