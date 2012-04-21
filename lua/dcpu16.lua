@@ -12,6 +12,52 @@ local P, R, S, V = lpeg.P, lpeg.R, lpeg.S, lpeg.V
 local C, Cc, Ct, Cg, Cf, Cmt = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg, lpeg.Cf, lpeg.Cmt
 
 ------------------------------------------------------------------------
+-- helper functions
+
+-- creates a named capture, result of which will be a list { id, matched_item }
+local function token(id, patt)
+        return Ct(Cc(id) * C(patt))
+end
+
+-- test if table is empty (no data under valid keys)
+local function table_empty (self)
+        for _, _ in pairs(self) do
+                return false
+        end
+        return true
+end
+
+-- Creates an LPeg pattern that matches a set of words.
+-- @param words A table of words.
+-- @param word_chars Optional string of additional characters considered to be
+--   part of a word (default is `%w_`).
+-- @param case_insensitive Optional boolean flag indicating whether the word
+--   match is case-insensitive.
+-- @usage local keyword = token(l.KEYWORD, word_match { 'foo', 'bar', 'baz' })
+-- @usage local keyword = token(l.KEYWORD, word_match({ 'foo-bar', 'foo-baz',
+--   'bar-foo', 'bar-baz', 'baz-foo', 'baz-bar' }, '-', true))
+-- @name word_match
+--
+-- http://foicica.com/hg/scintillua/raw-file/36123c3a9216/lexers/lexer.lua
+local function word_match(words, word_chars, case_insensitive)
+        local word_list = {}
+        for _, word in ipairs(words) do
+                word_list[case_insensitive and word:lower() or word] = true
+        end
+        local chars = '%w_'
+        -- escape 'magic' characters
+        -- TODO: append chars to the end so ^_ can be passed for not including '_'s
+        if word_chars then chars = chars..word_chars:gsub('([%^%]%-])', '%%%1') end
+        return P(function(input, index)
+                local s, e, word = input:find('^(['..chars..']+)', index)
+                if word then
+                        if case_insensitive then word = word:lower() end
+                        return word_list[word] and e + 1 or nil
+                end
+        end)
+end
+
+------------------------------------------------------------------------
 -- grammar variables
 
 local whitespace = S' \t\v'
@@ -44,57 +90,25 @@ local comment = semi * (1 - P'\n')^0
 
 -- opcodes
 
-local gop = (
-  P"SET" +
-  P"ADD" +
-  P"SUB" +
-  P"MUL" +
-  P"DIV" +
-  P"MOD" +
-  P"SHL" +
-  P"SHR" +
-  P"AND" +
-  P"BOR" +
-  P"XOR" +
-  P"IFE" +
-  P"IFN" +
-  P"IFG" +
-  P"IFB" +
-  P"IFB"
-)
+local generic_opcode_names = { "SET", "ADD", "SUB", "MUL",
+                               "DIV", "MOD", "SHL", "SHR",
+                               "AND", "BOR", "XOR", "IFE",
+                               "IFN", "IFG", "IFB", "IFB", }
+local special_opcode_names = { "JSR" }
 
-local sop = (
-  P"JSR"
-)
-
-local op = gop + sop
+local gop = P(word_match(generic_opcode_names, '', true))
+local sop = P(word_match(special_opcode_names, '', true))
 
 -- registers
 
-local greg = ( -- "generic register"
-  P"A" +
-  P"B" +
-  P"C" +
-  P"X" +
-  P"Y" +
-  P"Z" +
-  P"I" +
-  P"J"
-)
+local generic_reg_names = { "A", "B", "C", "X", "Y", "Z", "I", "J" }
+local special_reg_names = { "POP", "PEEK", "PUSH", "SP", "PC", "O" }
 
-local sreg = ( -- "special register"
-  P"POP" +
-  P"PEEK" +
-  P"PUSH" +
-  P"SP" +
-  P"PC" +
-  P"O"
-)
-
-local reg = greg + sreg
+local greg = P(word_match(generic_reg_names, '', true))
+local sreg = P(word_match(special_reg_names, '', true))
 
 -- symbolic stuff: keywords, variables, lables, etc
-local keywords = gop + sop + reg
+local keywords = gop + sop + greg + sreg
 
 local variable = (locale.alpha + P"_") * (locale.alnum + P"_")^0 -- - keywords
 
@@ -125,21 +139,7 @@ local _sreg       = V'sreg';
 local _num        = V'num';
 
 ------------------------------------------------------------------------
--- helper functions
-
--- creates a named capture, result of which will be a list { id, matched_item }
-local function token(id, patt)
-        return Ct(Cc(id) * C(patt))
-end
-
--- test if table is empty (no data under valid keys)
-local function table_empty (self)
-        for _, _ in pairs(self) do
-                return false
-        end
-        return true
-end
-
+-- create a new instance of the parser, in a private closure
 
 function D.new()
 
@@ -411,15 +411,16 @@ function D.new()
         function t.parse(self, program)
                 local r = lpeg.match(grammar, program)
                 if r == 'start_program' then
-                        io.stderr:write("WARNING: parsing generated no code\n")
-                        return nil, false
+                        local msg = "WARNING: parsing generated no code"
+                        return nil, true, msg
                 end
                 if error_line then
-                        io.stderr:write("ERROR: parsing line "..(tostring(error_line))..": "..error_msg.."\n")
-                        return r, false
+                        local msg = "ERROR: parsing line "..(tostring(error_line))..": "..error_msg
+                        return r, false, msg
                 end
                 if not r then
-                        io.stderr:write("ERROR: parsing stopped at line "..(tostring(mt_line)).."\n")
+                        local msg = "ERROR: parsing stopped at line "..(tostring(mt_line))
+                        return nil, false, msg
                 end
                 return r, true
         end

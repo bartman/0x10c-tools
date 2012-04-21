@@ -6,60 +6,82 @@ local D = require 'dcpu16'
 
 require 'dumper'
 function dump(...)
-        print(DataDumper(...), "\n-----------------------------------------")
+        print(DataDumper(...))
+end
+
+function die(...)
+        io.stdout:flush()
+        io.stderr:write(...)
+        os.exit(1)
 end
 
 --
 
 function test()
         local d = D.new()
-        function parse_and_dump(program)
-                local r = d:newparse(program)
+        function test_parser(program, expectation)
+                local r,s,msg = d:newparse(program)
+                if type(expectation) == 'boolean' then
+                        if expectation and s then
+                                return
+                        elseif not expectation and not s then
+                                return
+                        end
+                else
+                        die("unhandled expectation type: "..type(expectation).."\n")
+                end
+                print("-----------------------------------------\n"
+                      .. "FAILED TEST CASE\n")
+                if msg then print("    "..msg.."\n") end
                 dump(r, '"'..program..'"  =>  ')
+                print''
         end
-        --[[
-        parse_and_dump ('SET A, B')
-        parse_and_dump ('SET A, 1')
-        parse_and_dump ('SET A, [A]')
-        parse_and_dump ('SET A, [1]')
-        parse_and_dump ('SET A, [A+1]')
-        parse_and_dump ('SET A, [1+A]')
-        parse_and_dump ('JSR A')
-        parse_and_dump (':x JSR A')
-        parse_and_dump (':X JSR POP')
-        parse_and_dump (':x_0 JSR POP')
-        parse_and_dump (':Z_0 JSR POP')
-        parse_and_dump ('; xxx')
-        parse_and_dump ('SET A, 1; 123')
-        parse_and_dump (' SET A, 1 ;123')
-        parse_and_dump ('  SET A, 1 ;123')
-        parse_and_dump ('   SET A, 1 ;123')
-        parse_and_dump ('    SET A, 0x30              ; 7c01 0030')
-        parse_and_dump ('    SET A, 0x30              ; 7c01 0030   ')
-        parse_and_dump ('; cmnt')
-        parse_and_dump ('SET A, B')
-        parse_and_dump ('SET A, 1 ; cmnt')
-        parse_and_dump ('JSR A')
-        parse_and_dump (':foo')
-        parse_and_dump (':foo SET A, B')
-        parse_and_dump (':foo_x')
-        parse_and_dump (':foo_x SET A, B')
-        parse_and_dump (':foo SET A, B')
-        parse_and_dump ('SET A, [A]')
-        parse_and_dump ('SET A, [1+A]')
-        parse_and_dump ('SET A, variable')
-        parse_and_dump (':xxx SET A, variable ; comment')
-        parse_and_dump ("SET A, B\n")
-        parse_and_dump ("SET A, B\nxxx")
-        parse_and_dump ("SET A, B\nSET B, A")
-        parse_and_dump ("SET A, B\n\nSET B, A")
-        parse_and_dump ("SET x,POP")
-        ]]--
-        parse_and_dump ("#macro pop(x){\nSET x,POP\n}")
-        parse_and_dump ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}")
-        parse_and_dump ("#macro pop(x){\n SET x,POP\n}\nSET A, 1")
-        parse_and_dump ("#macro pop(x){\n SET x,POP\n}\npop(A)")
-        parse_and_dump ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}\npop2(A,B)")
+        function good(program)
+                test_parser(program,true)
+        end
+        function fail(program)
+                test_parser(program,false)
+        end
+        good ('SET A, B')
+        good ('SET A, B')
+        good ('SET A, 1')
+        good ('SET A, [A]')
+        good ('SET A, [1]')
+        good ('SET A, [A+1]')
+        good ('SET A, [1+A]')
+        good ('JSR A')
+        good (':x JSR A')
+        good (':X JSR POP')
+        good (':x_0 JSR POP')
+        good (':Z_0 JSR POP')
+        good ('; xxx')
+        good ('SET A, 1; 123')
+        good (' SET A, 1 ;123')
+        good ('  SET A, 1 ;123')
+        good ('   SET A, 1 ;123')
+        good ('    SET A, 0x30              ; 7c01 0030')
+        good ('    SET A, 0x30              ; 7c01 0030   ')
+        good ('; cmnt')
+        good ('SET A, 1 ; cmnt')
+        good (':foo')
+        good (':foo SET A, B')
+        good (':foo_x')
+        good (':foo_x SET A, B')
+        good (':foo SET A, B')
+        good ('SET A, [A]')
+        good ('SET A, [1+A]')
+        good ('SET A, variable')
+        good (':xxx SET A, variable ; comment')
+        good ("SET A, B\n")
+        fail ("SET A, B\nxxx")
+        good ("SET A, B\nSET B, A")
+        good ("SET A, B\n\nSET B, A")
+        good ("SET x,POP")
+        good ("#macro pop(x){\nSET x,POP\n}")
+        good ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}")
+        good ("#macro pop(x){\n SET x,POP\n}\nSET A, 1")
+        good ("#macro pop(x){\n SET x,POP\n}\npop(A)")
+        good ("#macro pop2(x,y){\nSET x,POP\nSET y,POP\n}\npop2(A,B)")
 
 
         --[[
