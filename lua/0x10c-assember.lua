@@ -5,22 +5,64 @@ local lpeg = require 'lpeg'
 local D = require 'dcpu16'
 
 require 'dumper'
-function dump(...)
+local function dump(...)
     print(DataDumper(...))
 end
 
-function die(...)
+local function lmap(func, array)
+        local new_array = {}
+        for i,v in ipairs(array) do
+                new_array[i] = func(v)
+        end
+        return new_array
+end
+local function tmap(func, array)
+        local new_array = {}
+        for k,v in pairs(array) do
+                new_array[k] = func(v)
+        end
+        return new_array
+end
+
+local debug_level = 5
+local function dbg(l,...)
+    if debug_level >= l then
+        io.stderr:write("# "..table.concat( lmap(function(n)
+            return tostring(n)
+        end, {...}), "\t").."\n")
+    end
+end
+local function dbgf(l,fmt,...)
+    if debug_level >= l then
+        io.stderr:write("# "..string.format(fmt,...).."\n")
+    end
+end
+
+local function die(...)
     io.stdout:flush()
     io.stderr:write(...)
     os.exit(1)
 end
 
-function parse(d, file)
+local function xx(num)
+        return string.format("%02x", num)
+end
+local function xxxx(num)
+        return string.format("%04x", num)
+end
 
+local function parse(d, file)
+
+    --[[
     local f = assert(io.open(file))
     local program = f:read'*all'
-    local res, suc, msg = d:newparse(program)
     f:close()
+    ]]--
+
+    --local program = 'dat 1, "a", "abcdefg"'
+    local program = 'SET A, 0x1000'
+
+    local res, suc, msg = d:newparse(program)
 
     if msg then print("\n"..msg.."\n") end
     if not suc then os.exit(1) end
@@ -53,37 +95,38 @@ function assemble(d, prog)
 
         local num = 0
 
-        local rc = lpeg.match(
-        ( D.greg / function()
-            local gr = generic_registers[arg]
-            dbg(3,"", "greg", arg)
+        io.stderr:write(string.format("  >> arg=%s\n", DataDumper(arg,"")))
+
+        if arg.greg then
+            local gr = generic_registers[arg.greg]
+            dbg(3,"", "greg", arg.greg)
             if not gr then
-                die("don't know how to encode reg '"..arg.."'")
+                die("don't know how to encode reg '"..(arg.greg).."'")
             end
             num = gr.num
-        end
-        + D.sreg / function()
-            local sr = special_registers[arg]
-            dbg(3,"", "sreg", arg)
+
+        elseif arg.sreg then
+            local sr = special_registers[arg.sreg]
+            dbg(3,"", "sreg", arg.sreg)
             if not sr then
-                die("don't know how to encode reg '"..arg.."'")
+                die("don't know how to encode reg '"..(arg.sreg).."'")
             end
             num = sr.num
-        end
-        + D.numlit / function()
-            dbg(3,"", "numlit", arg)
-            local n = tonumber(arg)
+
+        elseif arg.num ~= nil then
+            dbg(3,"", "num", arg.num)
+            local n = tonumber(arg.num)
             if n >= 0 and n < 0x20 then
                 num = n + 0x20
             else
                 num = 0x1f
                 isn.words[#isn.words + 1] = n
             end
-        end
-        + D.variable / function()
-            dbg(3,"", "variable", arg)
 
-            local ofs = assembler.vars[arg]
+        elseif arg.var then
+            dbg(3,"", "var", arg.var)
+
+            local ofs = assembler.vars[arg.var]
             if not ofs then
                 -- record unresolved address
                 isn.final = false
@@ -92,9 +135,9 @@ function assemble(d, prog)
 
             num = 0x1f
             isn.words[#isn.words + 1] = ofs
-        end
-        + D.mref / function()
-            local t = lpeg.match(D.mref_ct, arg)
+
+        elseif arg.mref then
+            local t = lpeg.match(D.mref_ct, arg.mref)
             if not t then
                 die("don't know how to encode mref '"..arg.."'")
             end
@@ -124,11 +167,8 @@ function assemble(d, prog)
             else
                 die("don't know how to encode mref '"..arg.."'")
             end
-        end)
-        , arg)
-
-        if not rc then
-            die("failed to parse argument '"..arg.."'")
+        else
+            die(DataDumper(arg, "didn't know how to handle arg: ").."\n")
         end
 
         -- this is really op |= num << shift, but lua lacks bit ops
@@ -200,12 +240,51 @@ function assemble(d, prog)
 
     local pc = 0
     local memory = {}
+    local labels = {}
 
     local function handle_label(block)
+        io.stderr:write(string.format("pc=0x%04x label '%s'\n", pc, block.label))
+        if labels[block.label] ~= nil then
+            die(string.format("label '%s' already exists at 0x%04x\n", block.label, labels[block.label]))
+        end
+        labels[block.label] = pc
     end
     local function handle_data(block)
+        io.stderr:write(string.format("pc=0x%04x data '%s'\n", pc, DataDumper(block.data, "")))
+        for i,datum in ipairs(block.data) do
+            io.stderr:write(string.format("  > %s\n", DataDumper(datum, "")))
+            if datum.num then
+                memory[pc] = datum.num
+                pc = pc + 1
+            elseif datum.str then
+                local bytes = { string.byte(datum.str,1,datum.str:len()) }
+                for i,b in ipairs(bytes) do
+                    memory[pc] = b
+                    pc = pc + 1
+                end
+            else
+                die(DataDumper(datum, "don't know how to handle data: ").."\n")
+            end
+        end
     end
     local function handle_op(block)
+        io.stderr:write(string.format("pc=0x%04x op '%s'\n", pc, DataDumper({block.op,block.a,block.b}, "")))
+
+        local op = generic_opcodes[block.op]
+        if not op then
+            op = extension_opcodes[block.op]
+            if not op then
+                die("unknown opcode: "..block.op.."\n")
+            end
+        end
+
+        local isn = op:assemble(block.op, block.a, block.b)
+
+        for j = 1, #isn.words do
+            memory[pc] = isn.words[j]
+            pc = pc + 1
+        end
+
     end
 
     for i,v in ipairs(prog) do
@@ -221,6 +300,24 @@ function assemble(d, prog)
         end
     end
 
+
+    local out = io.stdout
+
+    print(string.format("pc=0x%04x end", pc))
+    print(string.format("#memory=%u", #memory))
+
+    local o=0
+    while o <= #memory do
+        out:write(xxxx(o)..':')
+        for i = 0,7 do
+            if memory[o+i] then
+                out:write(' '..xxxx(memory[o+i]))
+            end
+        end
+        out:write("\n")
+        o = o + 8
+    end
+
     return true
 end
 
@@ -228,7 +325,7 @@ end
 
 
 if #arg ~= 1 then
-    die'provide a single file'
+    die'provide a single file\n'
 end
 
 local d = D.new()

@@ -78,14 +78,6 @@ local decnum = digit^1
 
 local numlit = hexnum + octnum + decnum
 
-local charlit = ( P'L'^-1 * P"'" * (P'\\' * P(1) + (1 - S"\\'"))^1 * P"'" )
-              + ( P'L'^-1 * P'"' * (P'\\' * P(1) + (1 - S"\\\""))^1 * P'"' )
-
-local stringlit =
-  P'L'^-1 * P'"' * (P'\\' * P(1) + (1 - S'\\"'))^0 * P'"'
-
-local literal = (numlit + charlit + stringlit)
-
 local comment = semi * (1 - P'\n')^0
 
 -- opcodes
