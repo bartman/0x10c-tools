@@ -24,7 +24,7 @@ local function tmap(func, array)
         return new_array
 end
 
-local debug_level = 5
+local debug_level = 0
 local function dbg(l,...)
     if debug_level >= l then
         io.stderr:write("# "..table.concat( lmap(function(n)
@@ -40,6 +40,7 @@ end
 
 local function die(...)
     io.stdout:flush()
+    io.stderr:write("ERROR: ")
     io.stderr:write(...)
     os.exit(1)
 end
@@ -53,14 +54,9 @@ end
 
 local function parse(d, file)
 
-    --[[
     local f = assert(io.open(file))
     local program = f:read'*all'
     f:close()
-    ]]--
-
-    --local program = 'dat 1, "a", "abcdefg"'
-    local program = 'SET A, 0x1000'
 
     local res, suc, msg = d:newparse(program)
 
@@ -71,6 +67,12 @@ local function parse(d, file)
 end
 
 function assemble(d, prog)
+    -- collecting things about the assembly
+    local pc = 0
+    local memory = {}
+    local labels = {}
+
+    -- these should end up in dcpu16.lua
     local generic_registers = {
         A={ num=0 },
         B={ num=1 },
@@ -91,11 +93,12 @@ function assemble(d, prog)
         O   ={ num=0x1d },
     }
 
+    -- update isn object with compiled words
     local function assemble_isn_arg(arg, isn, mult)
 
         local num = 0
 
-        io.stderr:write(string.format("  >> arg=%s\n", DataDumper(arg,"")))
+        dbgf(1,"  >> arg=%s\n", DataDumper(arg,""))
 
         if arg.greg then
             local gr = generic_registers[arg.greg]
@@ -126,7 +129,7 @@ function assemble(d, prog)
         elseif arg.var then
             dbg(3,"", "var", arg.var)
 
-            local ofs = assembler.vars[arg.var]
+            local ofs = labels[arg.var]
             if not ofs then
                 -- record unresolved address
                 isn.final = false
@@ -137,35 +140,30 @@ function assemble(d, prog)
             isn.words[#isn.words + 1] = ofs
 
         elseif arg.mref then
-            local t = lpeg.match(D.mref_ct, arg.mref)
-            if not t then
-                die("don't know how to encode mref '"..arg.."'")
-            end
-
             local gr = nil
-            if t.reg then
-                gr = generic_registers[t.reg]
+            if arg.mref.greg then
+                gr = generic_registers[arg.mref.greg]
                 if not gr then
-                    die("don't know how to encode reg '"..t.reg.."' of '"..arg.."'")
+                    die("don't know how to encode reg '"..(arg.mref.greg).."' of "..DataDumper(arg,"").."\n")
                 end
             end
 
-            if t.reg and t.numlit then
+            if gr and arg.mref.num then
 
                 num = 0x10 + gr.num
-                isn.words[#isn.words + 1] = t.numlit
+                isn.words[#isn.words + 1] = arg.mref.num
 
-            elseif t.reg then
+            elseif gr then
 
                 num = 0x08 + gr.num
 
-            elseif t.numlit then
+            elseif arg.mref.num then
 
                 num = 0x1e
-                isn.words[#isn.words + 1] = t.numlit
+                isn.words[#isn.words + 1] = arg.mref.num
 
             else
-                die("don't know how to encode mref '"..arg.."'")
+                die("don't know how to encode mref "..DataDumper(arg.mref,"").."\n")
             end
         else
             die(DataDumper(arg, "didn't know how to handle arg: ").."\n")
@@ -191,7 +189,7 @@ function assemble(d, prog)
 
         dbg(1,">> ".. table.concat(lmap(function(n)
             return string.format("0x%04x", n)
-        end, isn.words), ' '))
+        end, isn.words), ' '), "\n")
 
         return isn
     end
@@ -238,21 +236,17 @@ function assemble(d, prog)
         JSR={ num=0x1, assemble=assemble_xisn },
     }
 
-    local pc = 0
-    local memory = {}
-    local labels = {}
-
     local function handle_label(block)
-        io.stderr:write(string.format("pc=0x%04x label '%s'\n", pc, block.label))
+        dbgf(1, "pc=0x%04x label '%s'\n", pc, block.label)
         if labels[block.label] ~= nil then
             die(string.format("label '%s' already exists at 0x%04x\n", block.label, labels[block.label]))
         end
         labels[block.label] = pc
     end
     local function handle_data(block)
-        io.stderr:write(string.format("pc=0x%04x data '%s'\n", pc, DataDumper(block.data, "")))
+        dbgf(1, "pc=0x%04x data '%s'\n", pc, DataDumper(block.data, ""))
         for i,datum in ipairs(block.data) do
-            io.stderr:write(string.format("  > %s\n", DataDumper(datum, "")))
+            dbgf(1, "  > %s\n", DataDumper(datum, ""))
             if datum.num then
                 memory[pc] = datum.num
                 pc = pc + 1
@@ -268,7 +262,7 @@ function assemble(d, prog)
         end
     end
     local function handle_op(block)
-        io.stderr:write(string.format("pc=0x%04x op '%s'\n", pc, DataDumper({block.op,block.a,block.b}, "")))
+        dbgf(1, "pc=0x%04x op '%s'\n", pc, DataDumper({block.op,block.a,block.b}, ""))
 
         local op = generic_opcodes[block.op]
         if not op then
@@ -288,7 +282,7 @@ function assemble(d, prog)
     end
 
     for i,v in ipairs(prog) do
-        dump(v, "")
+        dbg(2, DataDumper(v, ""))
         if v.label then
             handle_label(v)
         end
@@ -303,8 +297,8 @@ function assemble(d, prog)
 
     local out = io.stdout
 
-    print(string.format("pc=0x%04x end", pc))
-    print(string.format("#memory=%u", #memory))
+    dbgf(1, "pc=0x%04x end", pc)
+    dbgf(1, "#memory=%u", #memory)
 
     local o=0
     while o <= #memory do
