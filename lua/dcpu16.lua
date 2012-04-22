@@ -339,6 +339,29 @@ function D.new()
                 return x
         end
 
+        -- folding data
+        local function fold_data(a,b)
+                --io.stderr:write("--fold_data--\n")
+                --io.stderr:write(DataDumper(a,'    fd>> a=').."\n")
+                --io.stderr:write(DataDumper(b,'    fd>> b=').."\n")
+
+                if type(b) ~= 'table' or table_empty(b) then
+                        -- no code generated
+                        return a
+                end
+
+                if not b.line then b.line = ct_line end
+
+                if type(a) ~= 'table' then
+                        -- this is the start token
+                        a = {}
+                end
+
+                -- this is every line
+                table.insert(a, b)
+                return a
+        end
+
         -- used for debugging only
         local function dbg(pat)
                 return Cmt(pat,function(s,i,cap)
@@ -408,7 +431,7 @@ function D.new()
                 line_expnd  = Cf(token('macro_ex_start', macro_name) * w0 * P'(' * _expnd_args * token('macro_ex_end',P')'), fold_expansion);
                 expnd_args  = w0 * _oparg/build_table * (comma * _oparg/build_table)^0 * w0;
                 --
-                line_data   = _data * w1 * _data_arg * (comma * _data_arg)^0 * w0;
+                line_data   = _data * w1 * token('data', Cf(Cc('start_data') * _data_arg * (comma * _data_arg)^0 * w0, fold_data));
                 data_arg    = _str + _num;
                 --
                 oparg       = _reg + _mref + _num + _var;
