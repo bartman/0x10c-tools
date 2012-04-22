@@ -3,16 +3,11 @@
 package.path = './lua/?.lua;' .. package.path
 local lpeg = require 'lpeg'
 local DP = require 'dcpu16.parser'
+require 'dcpu16.util'
 
 require 'dumper'
 function dump(...)
         print(DataDumper(...))
-end
-
-function die(...)
-        io.stdout:flush()
-        io.stderr:write(...)
-        os.exit(1)
 end
 
 if #arg == 1 then

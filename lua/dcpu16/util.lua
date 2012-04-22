@@ -1,37 +1,53 @@
-local debug_level = 0
-local function dbg(l,...)
-        if debug_level >= l then
-                io.stderr:write("# "..table.concat({...},"\t").."\n")
-        end
-end
-local function dbgf(l,fmt,...)
-        if debug_level >= l then
-                io.stderr:write("# "..string.format(fmt,...).."\n")
-        end
-end
-local function die(...)
-        io.stderr:write("ERROR: "..table.concat({...},"\t").."\n")
+-- severe error reporting
+
+function die(...)
+        io.stdout:flush()
+        io.stderr:write("ERROR: ")
+        io.stderr:write(...)
+        io.stderr:write("\n")
         os.exit(1)
 end
-local function lmap(func, array)
+
+-- apply function to list or table
+
+function lmap(func, array)
         local new_array = {}
         for i,v in ipairs(array) do
                 new_array[i] = func(v)
         end
         return new_array
 end
-local function tmap(func, array)
+function tmap(func, array)
         local new_array = {}
         for k,v in pairs(array) do
                 new_array[k] = func(v)
         end
         return new_array
 end
-local function xx(num)
+
+-- debug output
+
+debug_level = 0
+
+function dbg(l,...)
+    if debug_level >= l then
+        io.stderr:write("# "..table.concat( lmap(function(n)
+            return tostring(n)
+        end, {...}), "\t").."\n")
+    end
+end
+
+function dbgf(l,fmt,...)
+    if debug_level >= l then
+        io.stderr:write("# "..string.format(fmt,...).."\n")
+    end
+end
+
+-- string conversion
+
+function xx(num)
         return string.format("%02x", num)
 end
-local function xxxx(num)
+function xxxx(num)
         return string.format("%04x", num)
 end
-
-

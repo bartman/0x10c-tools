@@ -1,56 +1,16 @@
 #!/usr/bin/lua
 
 package.path = './lua/?.lua;' .. package.path
-local lpeg = require 'lpeg'
 local DP = require 'dcpu16.parser'
+require 'dcpu16.util'
 
 require 'dumper'
 local function dump(...)
     print(DataDumper(...))
 end
 
-local function lmap(func, array)
-        local new_array = {}
-        for i,v in ipairs(array) do
-                new_array[i] = func(v)
-        end
-        return new_array
-end
-local function tmap(func, array)
-        local new_array = {}
-        for k,v in pairs(array) do
-                new_array[k] = func(v)
-        end
-        return new_array
-end
 
-local debug_level = 0
-local function dbg(l,...)
-    if debug_level >= l then
-        io.stderr:write("# "..table.concat( lmap(function(n)
-            return tostring(n)
-        end, {...}), "\t").."\n")
-    end
-end
-local function dbgf(l,fmt,...)
-    if debug_level >= l then
-        io.stderr:write("# "..string.format(fmt,...).."\n")
-    end
-end
-
-local function die(...)
-    io.stdout:flush()
-    io.stderr:write("ERROR: ")
-    io.stderr:write(...)
-    os.exit(1)
-end
-
-local function xx(num)
-        return string.format("%02x", num)
-end
-local function xxxx(num)
-        return string.format("%04x", num)
-end
+-- parse a file into a parse tree
 
 local function parse(d, file)
 
@@ -170,7 +130,7 @@ function assemble(d, prog)
                     if label_offset ~= nil then
                         memory[label_used_at] = label_offset
                     else
-                        die(string.format("could not resolve variable/label '%s'\n", arg.var))
+                        die(string.format("could not resolve variable/label '%s'", arg.var))
                     end
                 end
             end
@@ -182,7 +142,7 @@ function assemble(d, prog)
             if arg.mref.greg then
                 gr = generic_registers[arg.mref.greg]
                 if not gr then
-                    die("don't know how to encode reg '"..(arg.mref.greg).."' of "..DataDumper(arg,"").."\n")
+                    die("don't know how to encode reg '"..(arg.mref.greg).."' of "..DataDumper(arg,""))
                 end
             end
 
@@ -201,10 +161,10 @@ function assemble(d, prog)
                 mem_append(arg.mref.num)
 
             else
-                die("don't know how to encode mref "..DataDumper(arg.mref,"").."\n")
+                die("don't know how to encode mref "..DataDumper(arg.mref,""))
             end
         else
-            die(DataDumper(arg, "didn't know how to handle arg: ").."\n")
+            die(DataDumper(arg, "didn't know how to handle arg: "))
         end
 
         -- this is really op |= num << shift, but lua lacks bit ops
@@ -269,7 +229,7 @@ function assemble(d, prog)
     local function handle_label(block)
         dbgf(1, "pc=0x%04x label '%s'\n", pc, block.label)
         if labels[block.label] ~= nil then
-            die(string.format("label '%s' already exists at 0x%04x\n", block.label, labels[block.label]))
+            die(string.format("label '%s' already exists at 0x%04x", block.label, labels[block.label]))
         end
         labels[block.label] = pc
     end
@@ -285,7 +245,7 @@ function assemble(d, prog)
                     mem_append(byte)
                 end
             else
-                die(DataDumper(datum, "don't know how to handle data: ").."\n")
+                die(DataDumper(datum, "don't know how to handle data: "))
             end
         end
     end
@@ -296,7 +256,7 @@ function assemble(d, prog)
         if not op then
             op = extension_opcodes[block.op]
             if not op then
-                die("unknown opcode: "..block.op.."\n")
+                die("unknown opcode: "..block.op)
             end
         end
 
@@ -347,7 +307,7 @@ end
 
 
 if #arg ~= 1 then
-    die'provide a single file\n'
+    die'provide a single file'
 end
 
 local d = DP.new()

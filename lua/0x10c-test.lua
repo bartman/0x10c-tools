@@ -3,16 +3,11 @@
 package.path = './lua/?.lua;' .. package.path
 local lpeg = require 'lpeg'
 local DP = require 'dcpu16.parser'
+require 'dcpu16.util'
 
 require 'dumper'
 function dump(...)
         print(DataDumper(...))
-end
-
-function die(...)
-        io.stdout:flush()
-        io.stderr:write(...)
-        os.exit(1)
 end
 
 --
@@ -37,7 +32,7 @@ function test_parser(program, expectation)
             return
         end
     else
-        die("unhandled expectation type: "..type(expectation).."\n")
+        die("unhandled expectation type: "..type(expectation))
     end
 
     failed = failed + 1
@@ -91,12 +86,12 @@ for i = 1, #arg do
         elseif a:sub(2,2) and a:sub(3,3):len() == 0 then
             op = a:sub(2)
         else
-            die("invalid option: "..a.."\n")
+            die("invalid option: "..a)
         end
 
         local h = option_handlers[op]
         if not h then
-            die("unknonw option: "..a.."\n")
+            die("unknonw option: "..a)
         end
 
         local consume = h(arg,i)
