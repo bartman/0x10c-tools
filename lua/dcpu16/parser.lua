@@ -1,8 +1,8 @@
 #!/usr/bin/lua
 
--- this module creates a cpu16 class, here called D
+-- this module creates a cpu16.parser class, here called DP
 
-local D = {}
+local DP = {}
 
 -- we use LPEG
 
@@ -147,7 +147,7 @@ local _data       = V'data';
 ------------------------------------------------------------------------
 -- create a new instance of the parser, in a private closure
 
-function D.new()
+function DP.new()
 
         -- the new class and private variables
         local t = {}
@@ -488,6 +488,6 @@ function D.new()
 end
 
 ------------------------------------------------------------------------
--- class definition
+-- class definition returned
 
-return D
+return DP

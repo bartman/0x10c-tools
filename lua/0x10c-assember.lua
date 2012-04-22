@@ -2,7 +2,7 @@
 
 package.path = './lua/?.lua;' .. package.path
 local lpeg = require 'lpeg'
-local D = require 'dcpu16'
+local DP = require 'dcpu16.parser'
 
 require 'dumper'
 local function dump(...)
@@ -350,7 +350,7 @@ if #arg ~= 1 then
     die'provide a single file\n'
 end
 
-local d = D.new()
+local d = DP.new()
 local prog = parse(d, arg[1])
 local ret = assemble(d, prog)
 

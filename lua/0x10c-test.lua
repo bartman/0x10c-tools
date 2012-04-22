@@ -2,7 +2,7 @@
 
 package.path = './lua/?.lua;' .. package.path
 local lpeg = require 'lpeg'
-local D = require 'dcpu16'
+local DP = require 'dcpu16.parser'
 
 require 'dumper'
 function dump(...)
@@ -17,7 +17,7 @@ end
 
 --
 
-local d = D.new()
+local d = DP.new()
 
 local total = 0
 local failed = 0

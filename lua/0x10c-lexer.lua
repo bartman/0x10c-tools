@@ -6,7 +6,7 @@ local P, R, S, C = lpeg.P, lpeg.R, lpeg.S
 local C, Cc, Ct, Cg = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg
 
 package.path = './lua/?.lua;' .. package.path
-local D = require 'dcpu16'
+local DP = require 'dcpu16.parser'
 
 
 local debug_level = 0
@@ -72,17 +72,17 @@ local lex_actions = {
         label    = function(...) print('LABEL', ...) end
 }
 
-lexer.matcher = ( D.comment       / lex_actions.comment
-                + D.literal       / lex_actions.literal
+lexer.matcher = ( DP.comment       / lex_actions.comment
+                + DP.literal       / lex_actions.literal
                 + P","          / lex_actions.comma
-                + C( D.gop )      / lex_actions.gop
-                + C( D.sop )      / lex_actions.sop
-                + D.greg_c        / lex_actions.greg
-                + C( D.sreg )     / lex_actions.sreg
-                + D.mref_c         / lex_actions.mref
-                + C( D.variable ) / lex_actions.variable
-                + C( D.label )    / lex_actions.label
-                + D.whitespace
+                + C( DP.gop )      / lex_actions.gop
+                + C( DP.sop )      / lex_actions.sop
+                + DP.greg_c        / lex_actions.greg
+                + C( DP.sreg )     / lex_actions.sreg
+                + DP.mref_c         / lex_actions.mref
+                + C( DP.variable ) / lex_actions.variable
+                + C( DP.label )    / lex_actions.label
+                + DP.whitespace
                 )^0
 
 -- parse command line

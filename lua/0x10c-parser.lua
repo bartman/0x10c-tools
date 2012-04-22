@@ -2,7 +2,7 @@
 
 package.path = './lua/?.lua;' .. package.path
 local lpeg = require 'lpeg'
-local D = require 'dcpu16'
+local DP = require 'dcpu16.parser'
 
 require 'dumper'
 function dump(...)
@@ -16,7 +16,7 @@ function die(...)
 end
 
 if #arg == 1 then
-        local d = D.new()
+        local d = DP.new()
         local f = assert(io.open(arg[1]))
         local program = f:read'*all'
         local res, suc, msg = d:newparse(program)
