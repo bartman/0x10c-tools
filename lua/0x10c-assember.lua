@@ -72,6 +72,34 @@ function assemble(d, prog)
     local memory = {}
     local labels = {}
 
+    -- memory allocation and fill
+
+    local function mem_alloc(count)
+        local ofs = pc
+        count = count or 1
+        pc = pc + count
+        return ofs
+    end
+
+    local function mem_append(...)
+        local ofs = pc
+        local count = 0
+        for i,v in ipairs({...}) do
+            memory[pc] = v
+            pc = pc + 1
+            count = count + 1
+        end
+        return ofs, count
+    end
+
+    local function mem_section(ofs, len)
+        local s = {}
+        for i=0,(len-1) do
+            table.insert(s, memory[ofs + i])
+        end
+        return s
+    end
+
     -- these should end up in dcpu16.lua
     local generic_registers = {
         A={ num=0 },
@@ -123,21 +151,31 @@ function assemble(d, prog)
                 num = n + 0x20
             else
                 num = 0x1f
-                isn.words[#isn.words + 1] = n
+                mem_append(n)
             end
 
         elseif arg.var then
             dbg(3,"", "var", arg.var)
 
-            local ofs = labels[arg.var]
-            if not ofs then
-                -- record unresolved address
-                isn.final = false
-                ofs = 0 -- don't know yet where it is
+            local label_used_at = mem_alloc(1)
+
+            local label_offset = labels[arg.var]
+            if label_offset ~= nil then
+                -- label location already known
+                memory[label_used_at] = label_offset
+            else
+                -- label location not yet known, do it later
+                isn.finalize = function(self)
+                    label_offset = labels[arg.var]
+                    if label_offset ~= nil then
+                        memory[label_used_at] = label_offset
+                    else
+                        die(string.format("could not resolve variable/label '%s'\n", arg.var))
+                    end
+                end
             end
 
             num = 0x1f
-            isn.words[#isn.words + 1] = ofs
 
         elseif arg.mref then
             local gr = nil
@@ -151,7 +189,7 @@ function assemble(d, prog)
             if gr and arg.mref.num then
 
                 num = 0x10 + gr.num
-                isn.words[#isn.words + 1] = arg.mref.num
+                mem_append(arg.mref.num)
 
             elseif gr then
 
@@ -160,7 +198,7 @@ function assemble(d, prog)
             elseif arg.mref.num then
 
                 num = 0x1e
-                isn.words[#isn.words + 1] = arg.mref.num
+                mem_append(arg.mref.num)
 
             else
                 die("don't know how to encode mref "..DataDumper(arg.mref,"").."\n")
@@ -170,28 +208,23 @@ function assemble(d, prog)
         end
 
         -- this is really op |= num << shift, but lua lacks bit ops
-        isn.words[1] = isn.words[1] + (num * mult)
+        memory[isn.offset] = memory[isn.offset] + (num * mult)
     end
 
 
-    local function assemble_gisn(opcode, isn, a, b)
-        dbg(2,"", isn..'('..xx(opcode.num)..')', a, b)
+    local function assemble_gisn(opcode, isn)
+        dbg(2,"", (isn.op)..'('..xx(opcode.num)..')', a, b)
 
-        local isn = {
-            opcode = opcode,
-            isn = { isn, a, b },
-            words = { opcode.num },
-            final = true
-        }
+        isn.opcode = opcode
+        isn.offset, isn.length = mem_append(opcode.num)
+        isn.finalize = nil
 
-        assemble_isn_arg(a, isn, 16)    -- 16 to shift by 4 bits
-        assemble_isn_arg(b, isn, 1024)  -- 1024 to shift by 10 bits
+        assemble_isn_arg(isn.a, isn, 16)    -- 16 to shift by 4 bits
+        assemble_isn_arg(isn.b, isn, 1024)  -- 1024 to shift by 10 bits
 
         dbg(1,">> ".. table.concat(lmap(function(n)
             return string.format("0x%04x", n)
-        end, isn.words), ' '), "\n")
-
-        return isn
+        end, mem_section(isn.offset, isn.length)), ' '), "\n")
     end
 
     local generic_opcodes = {
@@ -213,28 +246,25 @@ function assemble(d, prog)
         IFB={ num=0xf, assemble=assemble_gisn },
     }
 
-    local function assemble_xisn(opcode, isn, a)
-        dbg(2,"", isn..'('..xx(opcode.num)..')', a, b)
+    local function assemble_xisn(opcode, isn)
+        dbg(2,"", (isn.op)..'('..xx(opcode.num)..')', a, b)
 
-        local isn = {
-            opcode = opcode,
-            isn = { isn, a },
-            words = { opcode.num * 16 },
-            final = true
-        }
+        isn.opcode = opcode
+        isn.offset, isn.length = mem_append(opcode.num)
+        isn.finalize = nil
 
-        assemble_isn_arg(a, isn, 1024)    -- 1024 to shift by 10 bits
+        assemble_isn_arg(isn.a, isn, 1024)    -- 1024 to shift by 10 bits
 
         dbg(1,">> ".. table.concat(lmap(function(n)
             return string.format("0x%04x", n)
-        end, isn.words), ' '))
-
-        return isn
+        end, mem_section(isn.offset, isn.length)), ' '))
     end
 
     local extension_opcodes = {
         JSR={ num=0x1, assemble=assemble_xisn },
     }
+
+    -- top level handers
 
     local function handle_label(block)
         dbgf(1, "pc=0x%04x label '%s'\n", pc, block.label)
@@ -248,13 +278,11 @@ function assemble(d, prog)
         for i,datum in ipairs(block.data) do
             dbgf(1, "  > %s\n", DataDumper(datum, ""))
             if datum.num then
-                memory[pc] = datum.num
-                pc = pc + 1
+                mem_append(datum.num)
             elseif datum.str then
                 local bytes = { string.byte(datum.str,1,datum.str:len()) }
-                for i,b in ipairs(bytes) do
-                    memory[pc] = b
-                    pc = pc + 1
+                for i,byte in ipairs(bytes) do
+                    mem_append(byte)
                 end
             else
                 die(DataDumper(datum, "don't know how to handle data: ").."\n")
@@ -272,25 +300,25 @@ function assemble(d, prog)
             end
         end
 
-        local isn = op:assemble(block.op, block.a, block.b)
-
-        for j = 1, #isn.words do
-            memory[pc] = isn.words[j]
-            pc = pc + 1
-        end
-
+        op:assemble(block)
     end
 
-    for i,v in ipairs(prog) do
-        dbg(2, DataDumper(v, ""))
-        if v.label then
-            handle_label(v)
+    for i,block in ipairs(prog) do
+        dbg(2, DataDumper(block, ""))
+        if block.label then
+            handle_label(block)
         end
-        if v.data then
-            handle_data(v)
+        if block.data then
+            handle_data(block)
         end
-        if v.op then
-            handle_op(v)
+        if block.op then
+            handle_op(block)
+        end
+    end
+
+    for i,block in ipairs(prog) do
+        if block.finalize then
+            block:finalize()
         end
     end
 
