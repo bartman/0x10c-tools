@@ -446,9 +446,11 @@ function D.new()
                 greg        = token('greg', greg);
                 sreg        = token('sreg', sreg);
                 num         = token('num', numlit) + _var + _char;
-                str         = token('str', stringlit);
-                char        = token('char', charlit);
                 var         = token('var', variable_name);
+                --
+                str         = P'L'^-1 * P'"' * token('str', (P'\\' * P(1) + (1 - S'\\"'))^0) * P'"';
+                char        = ( P'L'^-1 * P"'" * token('char', (P'\\' * P(1) + (1 - S"\\'"))^1) * P"'" )
+                              + ( P'L'^-1 * P'"' * token('char', (P'\\' * P(1) + (1 - S"\\\""))^1) * P'"' );
                 --
                 data        = token('data', data);
                 --
