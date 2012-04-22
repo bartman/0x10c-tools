@@ -23,9 +23,40 @@ local total = 0
 local failed = 0
 local debug = false
 
+-- ------------------------------------------------------------------------
+-- helpers for running tests
+
+function test_parser(program, expectation)
+    local r,s,msg = d:newparse(program, debug)
+    if type(expectation) == 'boolean' then
+        if expectation and s then
+            total = total + 1
+            return
+        elseif not expectation and not s then
+            total = total + 1
+            return
+        end
+    else
+        die("unhandled expectation type: "..type(expectation).."\n")
+    end
+
+    failed = failed + 1
+
+    print("-----------------------------------------\n"
+    .. "FAILED TEST CASE\n")
+    if msg then print("    "..msg.."\n") end
+    dump(r, '"'..program..'"  =>  ')
+    print''
+    if not s then os.exit(1) end
+end
+
+-- ------------------------------------------------------------------------
+-- parse options
+
 local long_options = {
     help='h',
     debug='d',
+    parse='p',
 }
 
 local option_handlers = {
@@ -34,12 +65,17 @@ local option_handlers = {
             .."\n"
             .." -h --help          - print this help\n"
             .." -d --debug         - turn on debug\n"
+            .." -p --parse <code>  - run parser on some code\n"
             )
         return 0
     end,
     d=function(arg,i)
         debug = true
         return 0
+    end,
+    p=function(arg,i)
+        test_parser(arg[i],true)
+        os.exit(0)
     end
 }
 
@@ -68,29 +104,9 @@ for i = 1, #arg do
     end
 end
 
-function test_parser(program, expectation)
-    local r,s,msg = d:newparse(program, debug)
-    if type(expectation) == 'boolean' then
-        if expectation and s then
-            total = total + 1
-            return
-        elseif not expectation and not s then
-            total = total + 1
-            return
-        end
-    else
-        die("unhandled expectation type: "..type(expectation).."\n")
-    end
+-- ------------------------------------------------------------------------
+-- default test cases
 
-    failed = failed + 1
-
-    print("-----------------------------------------\n"
-    .. "FAILED TEST CASE\n")
-    if msg then print("    "..msg.."\n") end
-    dump(r, '"'..program..'"  =>  ')
-    print''
-    if not s then os.exit(1) end
-end
 function good(program)
     test_parser(program,true)
 end
