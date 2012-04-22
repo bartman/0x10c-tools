@@ -462,9 +462,9 @@ function D.new()
                 return r, true
         end
 
-        function t.newparse(self, program)
+        function t.newparse(self, program, debug)
                 self:reset()
-                return self:parse(program)
+                return self:parse(program, debug)
         end
 
         return t

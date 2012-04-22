@@ -21,9 +21,55 @@ local d = D.new()
 
 local total = 0
 local failed = 0
+local debug = false
+
+local long_options = {
+    help='h',
+    debug='d',
+}
+
+local option_handlers = {
+    h=function(arg,i)
+        print("test [options...]\n"
+            .."\n"
+            .." -h --help          - print this help\n"
+            .." -d --debug         - turn on debug\n"
+            )
+        return 0
+    end,
+    d=function(arg,i)
+        debug = true
+        return 0
+    end
+}
+
+for i = 1, #arg do
+    local a=arg[i]
+    i = i + 1
+
+    if a:sub(1,1) == '-' then
+
+        local op
+        if a:sub(2,2) == '-' then
+            op = long_options[a:sub(3)]
+        elseif a:sub(2,2) and a:sub(3,3):len() == 0 then
+            op = a:sub(2)
+        else
+            die("invalid option: "..a.."\n")
+        end
+
+        local h = option_handlers[op]
+        if not h then
+            die("unknonw option: "..a.."\n")
+        end
+
+        local consume = h(arg,i)
+        i = i + consume
+    end
+end
 
 function test_parser(program, expectation)
-    local r,s,msg = d:newparse(program)
+    local r,s,msg = d:newparse(program, debug)
     if type(expectation) == 'boolean' then
         if expectation and s then
             total = total + 1
