@@ -43,7 +43,7 @@ DD.generic_opcodes = {
         IFB={ num=0xf },
 }
 
-DD.extension_opcodes = {
+DD.special_opcodes = {
         JSR={ num=0x1 },
 }
 

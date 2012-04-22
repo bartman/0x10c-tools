@@ -24,6 +24,13 @@ function tmap(func, array)
         end
         return new_array
 end
+function keys(array)
+        local r = {}
+        for k,v in pairs(array) do
+                table.insert(r, k)
+        end
+        return r
+end
 
 -- debug output
 
@@ -51,3 +58,12 @@ end
 function xxxx(num)
         return string.format("%04x", num)
 end
+
+-- test if table is empty (no data under valid keys)
+function table_empty (self)
+        for _, _ in pairs(self) do
+                return false
+        end
+        return true
+end
+

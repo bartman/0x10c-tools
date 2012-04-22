@@ -4,6 +4,9 @@
 
 local DP = {}
 
+local DD = require 'dcpu16.defs'
+require 'dcpu16.util'
+
 -- we use LPEG
 
 local lpeg = require 'lpeg'
@@ -17,14 +20,6 @@ local C, Cc, Ct, Cg, Cf, Cmt = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg, lpeg.Cf, lpeg.
 -- creates a named capture, result of which will be a list { id, matched_item }
 local function token(id, patt)
         return Ct(Cc(id) * C(patt))
-end
-
--- test if table is empty (no data under valid keys)
-local function table_empty (self)
-        for _, _ in pairs(self) do
-                return false
-        end
-        return true
 end
 
 -- Creates an LPeg pattern that matches a set of words.
@@ -82,19 +77,16 @@ local comment = semi * (1 - P'\n')^0
 
 -- opcodes
 
-local generic_opcode_names = { "SET", "ADD", "SUB", "MUL",
-                               "DIV", "MOD", "SHL", "SHR",
-                               "AND", "BOR", "XOR", "IFE",
-                               "IFN", "IFG", "IFB", "IFB", }
-local special_opcode_names = { "JSR" }
+local generic_opcode_names = keys(DD.generic_opcodes)
+local special_opcode_names = keys(DD.special_opcodes)
 
 local gop = P(word_match(generic_opcode_names, '', true))
 local sop = P(word_match(special_opcode_names, '', true))
 
 -- registers
 
-local generic_reg_names = { "A", "B", "C", "X", "Y", "Z", "I", "J" }
-local special_reg_names = { "POP", "PEEK", "PUSH", "SP", "PC", "O" }
+local generic_reg_names = keys(DD.generic_registers)
+local special_reg_names = keys(DD.special_registers)
 
 local greg = P(word_match(generic_reg_names, '', true))
 local sreg = P(word_match(special_reg_names, '', true))

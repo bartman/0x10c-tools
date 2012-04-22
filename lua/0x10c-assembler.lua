@@ -166,7 +166,7 @@ function assemble(d, prog)
         end, mem_section(isn.offset, isn.length)), ' '), "\n")
     end
 
-    local function assemble_xisn(num, isn)
+    local function assemble_sisn(num, isn)
         dbg(2,"", (isn.op)..'('..xx(num)..')', a, b)
 
         isn.offset, isn.length = mem_append(num)
@@ -211,9 +211,9 @@ function assemble(d, prog)
         if op ~= nil then
                 assemble_gisn(op.num, block)
         else
-            op = DD.extension_opcodes[block.op]
+            op = DD.special_opcodes[block.op]
             if op ~= nil then
-                    assemble_xisn(op.num, block)
+                    assemble_sisn(op.num, block)
             else
                     die("unknown opcode: "..block.op)
             end
