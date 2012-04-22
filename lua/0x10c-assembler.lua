@@ -2,6 +2,7 @@
 
 package.path = './lua/?.lua;' .. package.path
 local DP = require 'dcpu16.parser'
+local DD = require 'dcpu16.defs'
 require 'dcpu16.util'
 
 require 'dumper'
@@ -60,27 +61,6 @@ function assemble(d, prog)
         return s
     end
 
-    -- these should end up in dcpu16.lua
-    local generic_registers = {
-        A={ num=0 },
-        B={ num=1 },
-        C={ num=2 },
-        X={ num=3 },
-        Y={ num=4 },
-        Z={ num=5 },
-        I={ num=6 },
-        J={ num=7 },
-    }
-
-    local special_registers = {
-        POP ={ num=0x18 },
-        PEEK={ num=0x19 },
-        PUSH={ num=0x1a },
-        SP  ={ num=0x1b },
-        PC  ={ num=0x1c },
-        O   ={ num=0x1d },
-    }
-
     -- update isn object with compiled words
     local function assemble_isn_arg(arg, isn, mult)
 
@@ -89,7 +69,7 @@ function assemble(d, prog)
         dbgf(1,"  >> arg=%s\n", DataDumper(arg,""))
 
         if arg.greg then
-            local gr = generic_registers[arg.greg]
+            local gr = DD.generic_registers[arg.greg]
             dbg(3,"", "greg", arg.greg)
             if not gr then
                 die("don't know how to encode reg '"..(arg.greg).."'")
@@ -97,7 +77,7 @@ function assemble(d, prog)
             num = gr.num
 
         elseif arg.sreg then
-            local sr = special_registers[arg.sreg]
+            local sr = DD.special_registers[arg.sreg]
             dbg(3,"", "sreg", arg.sreg)
             if not sr then
                 die("don't know how to encode reg '"..(arg.sreg).."'")
@@ -140,7 +120,7 @@ function assemble(d, prog)
         elseif arg.mref then
             local gr = nil
             if arg.mref.greg then
-                gr = generic_registers[arg.mref.greg]
+                gr = DD.generic_registers[arg.mref.greg]
                 if not gr then
                     die("don't know how to encode reg '"..(arg.mref.greg).."' of "..DataDumper(arg,""))
                 end
@@ -172,11 +152,10 @@ function assemble(d, prog)
     end
 
 
-    local function assemble_gisn(opcode, isn)
-        dbg(2,"", (isn.op)..'('..xx(opcode.num)..')', a, b)
+    local function assemble_gisn(num, isn)
+        dbg(2,"", (isn.op)..'('..xx(num)..')', a, b)
 
-        isn.opcode = opcode
-        isn.offset, isn.length = mem_append(opcode.num)
+        isn.offset, isn.length = mem_append(num)
         isn.finalize = nil
 
         assemble_isn_arg(isn.a, isn, 16)    -- 16 to shift by 4 bits
@@ -187,30 +166,10 @@ function assemble(d, prog)
         end, mem_section(isn.offset, isn.length)), ' '), "\n")
     end
 
-    local generic_opcodes = {
-        SET={ num=0x1, assemble=assemble_gisn },
-        SET={ num=0x1, assemble=assemble_gisn },
-        ADD={ num=0x2, assemble=assemble_gisn },
-        SUB={ num=0x3, assemble=assemble_gisn },
-        MUL={ num=0x4, assemble=assemble_gisn },
-        DIV={ num=0x5, assemble=assemble_gisn },
-        MOD={ num=0x6, assemble=assemble_gisn },
-        SHL={ num=0x7, assemble=assemble_gisn },
-        SHR={ num=0x8, assemble=assemble_gisn },
-        AND={ num=0x9, assemble=assemble_gisn },
-        BOR={ num=0xa, assemble=assemble_gisn },
-        XOR={ num=0xb, assemble=assemble_gisn },
-        IFE={ num=0xc, assemble=assemble_gisn },
-        IFN={ num=0xd, assemble=assemble_gisn },
-        IFG={ num=0xe, assemble=assemble_gisn },
-        IFB={ num=0xf, assemble=assemble_gisn },
-    }
+    local function assemble_xisn(num, isn)
+        dbg(2,"", (isn.op)..'('..xx(num)..')', a, b)
 
-    local function assemble_xisn(opcode, isn)
-        dbg(2,"", (isn.op)..'('..xx(opcode.num)..')', a, b)
-
-        isn.opcode = opcode
-        isn.offset, isn.length = mem_append(opcode.num)
+        isn.offset, isn.length = mem_append(num)
         isn.finalize = nil
 
         assemble_isn_arg(isn.a, isn, 1024)    -- 1024 to shift by 10 bits
@@ -219,10 +178,6 @@ function assemble(d, prog)
             return string.format("0x%04x", n)
         end, mem_section(isn.offset, isn.length)), ' '))
     end
-
-    local extension_opcodes = {
-        JSR={ num=0x1, assemble=assemble_xisn },
-    }
 
     -- top level handers
 
@@ -252,15 +207,18 @@ function assemble(d, prog)
     local function handle_op(block)
         dbgf(1, "pc=0x%04x op '%s'\n", pc, DataDumper({block.op,block.a,block.b}, ""))
 
-        local op = generic_opcodes[block.op]
-        if not op then
-            op = extension_opcodes[block.op]
-            if not op then
-                die("unknown opcode: "..block.op)
+        local op = DD.generic_opcodes[block.op]
+        if op ~= nil then
+                assemble_gisn(op.num, block)
+        else
+            op = DD.extension_opcodes[block.op]
+            if op ~= nil then
+                    assemble_xisn(op.num, block)
+            else
+                    die("unknown opcode: "..block.op)
             end
         end
 
-        op:assemble(block)
     end
 
     for i,block in ipairs(prog) do
