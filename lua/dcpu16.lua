@@ -432,7 +432,7 @@ function D.new()
                 expnd_args  = w0 * _oparg/build_table * (comma * _oparg/build_table)^0 * w0;
                 --
                 line_data   = _data * w1 * token('data', Cf(Cc('start_data') * _data_arg * (comma * _data_arg)^0 * w0, fold_data));
-                data_arg    = _str + _num;
+                data_arg    = (_str + _num) / build_table;
                 --
                 oparg       = _reg + _mref + _num + _var;
                 opargtb     = ( _oparg ) / build_table;
