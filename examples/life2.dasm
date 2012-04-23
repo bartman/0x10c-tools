@@ -1,0 +1,209 @@
+;
+; Implementation of Conway's Game of Life.
+;
+; http://en.wikipedia.org/wiki/Conway's_Game_of_Life
+; Uses 32x12 screen at 0x8000 and game field array at 0x1000.
+;
+; The field is self-closed in every direction
+; but it has bugs, i hope i'll fix them some day.
+; I prefer to run and debug it at http://mappum.github.com/DCPU-16/
+; thanks to Mappum for this great tool.
+;
+; There is no delay in the game, it's runs as fast as it can.
+; But you can uncomment STEP BRK.
+;
+; Game screen with plane on it: http://i.imgur.com/EZfPg.png
+;
+; Hello from Russia.
+;
+
+;set filed map elements to 0, but thay are already 0 so it's in commentary
+;SET I, 16
+;:LOOPSTARTX
+;  SUB I, 1
+;  SET J, 32
+;  :LOOPSTARTY
+;    SUB J, 1
+;    SET A, I
+;    MUL A, 32
+;    ADD A, J
+;    ADD A, 0x1000
+;    SET [A], 0
+;    IFN J, 0
+;      SET PC, LOOPSTARTY
+;  IFN I, 0
+;    SET PC, LOOPSTARTX
+
+;set some start shapes, like a plane
+SET A, 0x1000
+ADD A, 0xC8
+SET [A], 1
+ADD A, 1
+SET [A], 1
+ADD A, 1
+SET [A], 1
+ADD A, 32
+SET [A], 1
+ADD A, 31
+SET [A], 1
+ 
+;infinity main loop starts
+:MAINLOOP
+
+;print field on screen  
+SET I, 12
+:PRINTLOOPX
+  SUB I, 1
+  SET J, 32
+  :PRINTLOOPY
+    SUB J, 1
+    SET A, I
+    MUL A, 32
+    ADD A, J
+    ADD A, 0x1000
+    SET X, 0x7000
+    ADD X, A
+    IFE [A], 2
+      SET [A], 1
+    IFE [A], 3
+      SET [A], 0
+    IFE [A], 1
+      SET [X], 48
+    IFE [A], 0
+      SET [X], 46
+    IFN J, 0
+      SET PC, PRINTLOOPY
+  IFN I, 0
+    SET PC, PRINTLOOPX
+
+;count changed cells
+SET I, 12
+:LOOPX
+  SUB I, 1
+  SET J, 32
+  :LOOPY
+    SUB J, 1
+    SET A, I
+    MUL A, 32
+    ADD A, J
+    ADD A, 0x1000
+    JSR COUNT    
+    IFE [A], 1
+      SET PC, ALIVE
+    IFE [A], 3
+      SET PC, ALIVE
+    IFE C, 3
+      SET [A], 2
+    SET PC, NEXT
+    :ALIVE
+    IFE C, 3
+      SET PC, NEXT
+    IFE C, 2
+      SET PC, NEXT
+    SET [A], 3
+    :NEXT
+    IFN J, 0
+      SET PC, LOOPY
+  IFN I, 0
+    SET PC, LOOPX
+    
+; step mode BRK, if BRK is supported in your emulator: 
+; uncomment it to play game frame by frame
+;BRK
+;infinity main loop loops
+SET PC, MAINLOOP
+
+
+:COUNT
+;C will be count of cells around
+SET C, 0
+
+;left top
+SET X, 33 
+JSR SUBX
+
+;center top
+SET X, 32
+JSR SUBX
+
+;right top
+SET X, 31
+JSR SUBX
+
+;left left
+JSR LEFT
+
+;right right
+JSR RIGHT
+
+;left bottom
+SET X, 31
+JSR ADDX
+
+;center bottom
+SET X, 32
+JSR ADDX
+
+;right bottom
+SET X, 33
+JSR ADDX
+
+SET PC, POP
+
+
+
+:SUBX
+SET B, A
+SUB B, X
+IFN O, 1
+  SET PC, MARK1
+SET B, A
+SUB X, B
+SET Y, 384
+SUB Y, X
+SET B, Y
+:MARK1
+IFE [B], 1
+  ADD C, 1
+IFE [B], 3
+  ADD C, 1
+SET PC, POP
+
+
+
+:ADDX
+SET B, A
+ADD B, X
+IFG B, 0x1180
+  SUB B, 384
+IFE [B], 1
+  ADD C, 1
+IFE [B], 3
+  ADD C, 1
+SET PC, POP
+
+
+
+:LEFT
+SET B, A
+IFE J, 0
+  ADD B, 32
+SUB B, 1
+IFE [B], 1
+  ADD C, 1
+IFE [B], 3
+  ADD C, 1
+SET PC, POP
+
+
+
+:RIGHT
+SET B, A
+IFE I, 31
+  SUB B, 32
+ADD B, 1
+IFE [B], 1
+  ADD C, 1
+IFE [B], 3
+  ADD C, 1
+SET PC, POP
