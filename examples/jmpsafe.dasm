@@ -1,0 +1,87 @@
+; http://0x10co.de/xbfkg
+
+; JmpSafe for DCPU by gsan
+; Catches bad SET PC/JSRs to nowhere and dumps stack trace
+; Debug Wrapper for anything
+; Search for MAIN to see where your code gets started
+; How it works:
+; 1. Set memory location 0 to jump to error handler
+; 2. Set all free RAM to "JSR 0" (i.e. opcode 0x8010)
+; 3. Run your code as normal.
+;    Any jump to a bad pointer will hit JSR 0, then
+;    jump to the Error handler.
+; 4. Error handler prints stack trace for debugging
+; 5. System halts by "sub pc, 1"
+
+; You can put your own JSR 0 inbetween procedures to 
+; catch runaway code for debugging. 
+; You can still allocate memory while using JmpSafe, but
+; don't count on it being zeroed any more!
+
+; Meat and Potatoes for JmpSafe below this line ---------
+; This line must be first/at location 0x0000!!!
+set pop, 0x8dc2 ; install error handler (op for ADD PC, 3)
+; Don't add code here, relative jump above!! Safe spot below
+set pc, jsfillram  ; fill memory with JSR 0, then start program
+:jserror ; JmpSafe error handler start
+set [0x80c1], 0xFCA1 ; draw flashing ! mid screen
+:jsPrintStack ; dump stack.
+set j, pop
+set i, j  ; J holds value on stack
+shr I, 12 ;high nibble
+set B, [errMsgLoc]
+set [B], i
+set I, J
+and I, 0x0F00
+shr I, 8
+set [1 + B], i
+set I, J
+and I, 0x00F0
+shr I, 4
+set [2 + B], i
+and J, 0xf
+set [3 + B], J
+;set B, [errMsgLoc]
+jsr jshex2ascii
+jsr jshex2ascii
+jsr jshex2ascii
+jsr jshex2ascii
+add [errMsgLoc], 5
+ifn SP, 0x0000
+ set pc, jsPrintStack
+sub pc, 1 ; Done, loop forever or jump where you want if you dare
+:errMsgLoc dat 0x80c2 ; Screen Memory to draw error message
+
+; safe to add code anywhere now :)
+
+; convert 0x0000-0x000f in [b++] to ascii equivalent
+:jshex2ascii
+set i, [b]
+add [b], 0x30
+ifg i, 0x09
+ add [b], 0x07
+BOR [b], 0xF400
+add b, 1
+set pc, pop
+
+; fill memory with jsr to zero
+:jsfillram 
+ set A, 0x8010 ; opcode for jsr 0x0
+ set sp, startFreeMem ; get the address of free ram
+ add sp, 4      ; don't round down 
+ and sp, 0xfffc ; make it / by 4 to quad pop
+:jsfillramloop
+ set pop, A ; set to "jsr 0x0"
+ set pop, A
+ set pop, A
+ set pop, A
+ ifn sp, 0x8000 ; skip over char set and screen
+  set PC, jsfillramloop
+ set pop, 0x0b3A ; progress
+ set pop, 0xb029 ; indicator :) ?
+ set SP, 0x8284 ; keep this a multiple of 4!
+:jsfrl2
+ set pop, A 
+ set pop, A
+ set pop, A 
+ set pop, A

@@ -1,0 +1,161 @@
+:list_heapsort
+;
+; file:
+;     list_heapsort.dasm
+;
+; name:
+;     heap sort algorithm v1.0
+;
+; author:
+;     evan sneath - http://github.com/evansneath
+;
+; description:
+;     heap sort algorithm. this algorithm is compatible
+;     with my defined list data type. the list functions
+;     can be found here: https://gist.github.com/2385969
+;
+;     this algorithm is based of the pseudocode for heapsort
+;     found at the following wikipedia page: 
+;     http://en.wikipedia.org/wiki/Heap_sort
+;
+; changelog:
+;     4/19/2012 - version 1.0 published
+;
+; license:
+;     this software is licensed under the open software
+;     license version 3.0:
+;     http://www.opensource.org/licenses/OSL-3.0
+; 
+; arguments:
+;     A - address of list
+;
+; list format:
+;     With the argument of A being head of the list, the
+;     list should be formatted as follows.
+;     [A] - size of list (N)
+;     [A+1] - first element
+;     ...
+;     [A+(N-1)] - last element
+;
+; example list:
+;     SET [0x4000], 4
+;     SET [0x4001], 7
+;     SET [0x4002], 5
+;     SET [0x4003], 9
+;     SET [0x4005], 1
+;
+; example function call:
+;     SET A, 0x4000
+;     JSR list_heapsort
+
+:init
+SET PUSH, O           ; preserve all registers on the stack
+SET PUSH, J
+SET PUSH, I
+SET PUSH, Z
+SET PUSH, Y
+SET PUSH, X
+SET PUSH, C
+SET PUSH, B
+SET PUSH, A           ; A is the location of list in memory
+
+:main
+JSR heapify           ; heapify(A)
+
+SET C, [A]            ; C = end <= count - 1
+SUB C, 1
+SET B, 0              ; B = start <= 0
+
+:main_loop
+IFE C, 0              ; while (end > 0) do
+SET PC, cleanup       ; condition false, cleanup program
+SET I, C
+SET J, 0
+JSR swap              ; swap(list[end], list[0])
+SUB C, 1              ; end <= end - 1
+JSR sift_down
+SET PC, main_loop
+
+:heapify              ; heapify(A=list_addr)
+SET B, [A]            ; [A] = count, B = start
+SUB B, 2
+DIV B, 2              ; start = (count - 2) / 2
+SET C, [A]            ; C = end = count - 1
+SUB C, 1
+
+:heapify_loop
+IFE B, 0xffff         ; while (start >= 0) do
+SET PC, heapify_end   ; start < 0, end heapify
+JSR sift_down         ; sift_down(A, B=start, C=count - 1)
+SUB B, 1              ; start <= start - 1
+SET PC, heapify_loop  ; end while
+:heapify_end
+SET PC, POP           ; return to function call
+
+:sift_down            ; sift_down(A=list_addr, B=start, C=end)
+SET X, B              ; X = root <= start
+:sift_loop
+SET Y, X              ; Y = child <= root * 2 + 1
+MUL Y, 2
+ADD Y, 1
+IFG Y, C              ; while (child <= end) do
+SET PC, sift_end      ; child > end, end sift_down
+SET Z, X              ; Z = swap <= root
+SET I, Y
+SET J, Z
+JSR ifg_element
+IFE I, 1              ; if (list[child] > list[swap])
+SET Z, Y              ; { swap <= child }
+ADD Y, 1              ; child <= child + 1
+IFG Y, C              ; if (child <= end)
+SET PC, sift_break    ; child > end, skip to break
+SET I, Y
+SET J, Z
+JSR ifg_element
+IFE I, 1              ; if (list[child] > list[swap])
+SET Z, Y              ; { swap <= child }
+:sift_break
+IFE Z, X              ; if (swap != root)
+SET PC, sift_end      ; swap == root, end sift_down
+SET I, X
+SET J, Z
+JSR swap              ; swap(list[root], list[swap])
+SET X, Z              ; root <= swap
+SET PC, sift_loop
+:sift_end
+SET PC, POP
+
+:ifg_element          ; I <= ifg_element(I=index1, J=index2)
+ADD I, 1
+ADD I, A
+ADD J, 1
+ADD J, A
+IFG [I], [J]          ; if (list[index1] > list[index2])
+SET PC, break_ifg     ; { I <= 1 }
+SET I, 0              ; else
+SET PC, POP           ; { I <= 0 }
+:break_ifg
+SET I, 1
+SET PC, POP
+
+:swap                 ; swap(I=index1, J=index2)
+ADD I, 1
+ADD I, A              ; calculate to get I <= list[index1]
+ADD J, 1
+ADD J, A              ; calculate to get J <= list[index2]
+SET O, [I]            ; O = tmp <= list[index1]
+SET [I], [J]          ; list[index1] <= list[index2]
+SET [J], O            ; list[index2] <= tmp
+SET PC, POP
+
+:cleanup
+SET A, POP            ; restore register values
+SET B, POP
+SET C, POP
+SET X, POP
+SET Y, POP
+SET Z, POP
+SET I, POP
+SET J, POP
+SET O, POP
+SET PC, POP           ; return from heapify

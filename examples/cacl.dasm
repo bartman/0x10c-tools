@@ -1,0 +1,656 @@
+;         --- C A L C U L O N - 3000 ---
+;    calculator for the 0x10command contest
+;		    (but really just for fun)
+;  only tested in the http://0x10co.de emulator
+;
+;     by Pentaphobe 
+;
+; Features:
+; 	*	An unsigned 5 digit 16-bit calculator with no overflow
+;     * okay, so that's more like the anti-feature :)
+;	*	Dynamic GUI layout
+;   *   Responsive buttons
+;	*	Buffered screen drawing to avoid flicker
+;	*	No overflow reporting!
+;
+;
+; ====[  LICENSE  ]====
+; feel free to reuse this code for anything, with attribution
+;
+; I reserve the right to whinge incessantly if you modify it to
+; win the same competition though :)
+
+
+
+set PC, startup
+
+
+:accumulator	dat	0
+:onDisplay		dat 0
+:operator		dat 0
+:digits			dat "0123456789"
+
+:displayPositionX dat 13
+:displayPositionY dat 2
+
+:titlePositionX dat 4
+:titlePositionY dat 1
+:titleText	dat " C A L C U L O N - 3000 ", 0
+
+; there's something odd about the 0x9010 thing which
+; I'm either not getting right now or is a bug in
+; 0x10co.de - either way, I'm using this instead now.
+:keyboardBufferPos	dat 0
+
+:boxTemplate 	dat "| *-"
+:buttonTemplate dat "| *-"
+
+
+
+:buttonTotal dat 16
+:buttonNames dat "0123456789+-*/=c"
+		  	 ;0  1  2  3  4  5  6  7  8  9  +  -  *  /  =   C
+:buttonX dat 11, 2, 5, 8, 2, 5, 8, 2, 5, 8,16,19,22,25, 22,25
+:buttonY dat 8,  4, 4, 4, 6, 6, 6, 8, 8, 8, 4, 4, 4, 4, 8, 8
+
+; these are used for user feedback
+:buttonLastPushed dat 0		; this is the Index of data above
+:buttonPushResponseTime dat 200
+:buttonPushTimer dat 0		; countdown to not highlighting
+				
+
+:startup
+	jsr setup_drawBackBuffer    
+	:mainLoop
+      set A, screenBuffer
+      set B, 0x8000
+      set C, 0x180
+      jsr __memCopy
+      
+  
+      jsr main_drawDisplay
+  
+      jsr main_handleInput
+
+    set PC, mainLoop
+        
+:exit
+	;brk
+    set PC, exit
+    
+    
+:__main_update_callback
+	ifg [buttonPushTimer], 0
+	    sub [buttonPushTimer], 1
+    jsr drawButtonActivity
+
+	set PC, POP
+    
+:setActiveButton	; A is the char of the button
+	set PUSH, C
+    set PUSH, B
+    set PUSH, X
+    
+    ; erase the background of the previous button
+    ; (otherwise we occasionally leave bit around)
+    set [buttonPushTimer], 1
+    jsr drawButtonActivity
+	set [buttonLastPushed], 0
+
+	; we allow ENTER as equals, so I crammed this in here
+    ife A, 0x0a
+    	set A, "="
+        
+	; find the ID
+    set X, [buttonTotal]
+    set C, 0
+    set B, buttonNames
+    :setActiveButton_findLoop
+        
+        ife [B], A
+        	set PC, setActiveButton_found
+        add C, 1
+        add B, 1
+        ifg X, C
+        	set PC, setActiveButton_findLoop   
+    
+    set PC, setActiveButton_done
+    
+    :setActiveButton_found
+    	set [buttonLastPushed], C
+        set [buttonPushTimer], [buttonPushResponseTime]
+
+
+
+    :setActiveButton_done
+	set X, POP
+    set B, POP
+    set C, POP
+    set PC, POP
+    
+:drawButtonActivity
+	set PUSH, X
+    set PUSH, Y
+    set PUSH, A
+    set PUSH, B
+    set PUSH, C
+    
+	set A, [buttonPushTimer]
+    ife A, 0
+    	set PC, drawButtonActivity_noDraw
+    set C, [buttonLastPushed]
+    set X, [buttonX + C]
+    set Y, [buttonY + C]
+    add X, 1
+    add Y, 1
+    jsr __getScreenPos
+    
+    ifg [buttonPushTimer], 1
+    	set PC, drawButtonActivity_highlight
+	
+    ;directly acting on the screen buffer was causing flickering
+    ; so this instead:
+    :drawButtonActivity_no_highlight
+      set X, [B]
+      and X, 0x00ff
+      bor X, 0xa000
+      set [B], X
+      set X, [B+1]
+      and X, 0x00ff
+      bor X, 0xa000
+      set [B+1], X
+      set PC, done
+    :drawButtonActivity_highlight
+      set X, [B]
+      and X, 0x00ff
+      bor X, 0x0a00
+      set [B], X
+      set X, [B+1]
+      and X, 0x00ff
+      bor X, 0x0a00
+      set [B+1], X    
+      
+    :drawButtonActivity_noDraw
+    :done
+    set C, POP
+    set B, POP
+    set A, POP
+    set Y, POP
+    set X, POP
+    set PC, POP
+    
+:setup_drawBackBuffer
+    set X, 0
+    set Y, 0
+	set I, 31
+    set J, 12
+    set Z, "|"
+    shl Z, 8
+    bor Z, " "
+    set B, "*"
+    shl B, 8
+    bor B, "-"
+    jsr __drawBox
+    
+    set X, 0
+    set Y, 0
+    set I, 31
+    set J, 3
+    set A, boxTemplate
+    jsr __drawTemplateBox
+
+	set X, 10
+    set Y, 2
+    set I, 10
+	set Z, "|"
+    shl Z, 8
+    bor Z, " "
+    jsr __drawLine
+
+    set X, [titlePositionX]
+    set Y, [titlePositionY]
+    set A, titleText
+    set C, 0xf000
+    jsr __drawString
+    
+    set A, 0x8000
+    set B, screenBuffer
+    set C, 0x180
+    jsr __memCopy
+    
+    jsr setup_drawButtons
+    
+    set PC, POP
+    
+:setup_drawButtons
+	set C, 0
+    
+    :setup_drawButtons_loop
+    	set X, [buttonX + C]
+        set Y, [buttonY + C]
+        set I, 4
+        set J, 3
+        set A, buttonTemplate
+        jsr __drawTemplateBox
+    
+    	set PUSH, C
+    	set A, [buttonNames+C]
+        set X, [buttonX + C]
+        add X, 1
+        set Y, [buttonY + C]
+        add Y, 1
+        
+		set C, 0xa000
+        jsr __drawChar
+        set C, POP
+    
+    add C, 1
+    ifg [buttonTotal], C
+    	set PC, setup_drawButtons_loop
+        
+    set PC, POP
+
+:drawButtonNames
+	set C, 0
+    :drawButtonNames_loop
+    	set X, [buttonX + C]
+        add X, 1
+        set Y, [buttonY + C]
+        add Y, 1
+        set A, [buttonNames + C]
+        set C, 0xA000
+        jsr __drawChar
+    add C, 1
+    ifg [buttonTotal], C
+    	set PC, drawButtonNames_loop
+    
+    set PC, POP
+        
+        
+:main_DrawDisplay
+    ; a little UX code - keep displaying the entered
+    ; numbers after an operator is hit (until there's new
+    ; data to show)
+    ifn [accumulator], 0
+		set PC, print_accumulator  
+	:print_display        
+	set C, [onDisplay]
+    set PC, print_digits
+    
+    :print_accumulator
+    	ifn [onDisplay], 0
+        	set PC, print_display
+        set C, [accumulator]
+    :print_digits
+	jsr printDisplay
+    
+    set PC, POP
+    
+:main_handleInput
+	jsr __getchar
+	    
+    ; process key
+    jsr setActiveButton
+    
+    ifn A, "c"
+    	set PC, not_clear
+    set [onDisplay], 0
+    set PC, continue
+    
+    :not_clear
+    ifn A, "q"
+    	set PC, not_quit
+    set PC, exit
+    
+    :not_quit
+    ifg "0", A
+    	set PC, not_digit
+    ifg A, "9"
+    	set PC, not_digit
+              
+    sub A, "0"
+    ; this approach to number accumulation won't work 
+    ; past the highest digit representable (10000)
+    ifg [onDisplay], 9999
+    	set PC, continue
+    mul [onDisplay], 10
+    add [onDisplay], A
+    set PC, continue
+    
+    :not_digit    
+    ife A, "+"
+    	set PC, do_op 
+    ife A, "-"
+    	set PC, do_op
+    ife A, "/"
+    	set PC, do_op    
+    ife A, "*"
+    	set PC, do_op
+    ; else
+    set PC, not_op
+    
+    :do_op
+    ; an alternative implementation would be
+    ; to swap [accumulator] and [onDisplay] 
+    ; (with XOR) and then leave the operator so
+    ; that sucessive '=' accumulate
+    set [operator], A
+    set [accumulator], [onDisplay]
+    set [onDisplay], 0
+    set PC, continue
+    
+    :not_op
+    ife A, 0x0a
+    	set PC, do_equals
+    ifn A, "="
+    	set PC, not_eq
+	:do_equals   
+    ifn [operator], "+"
+    	set PC, not_op_add
+    add [accumulator], [onDisplay]
+    set PC, op_done
+    
+    :not_op_add
+    ifn [operator], "-"
+    	set PC, not_op_sub
+    sub [accumulator], [onDisplay]
+    set PC, op_done
+    :not_op_sub
+    ifn [operator], "/"
+    	set PC, not_op_div
+    div [accumulator], [onDisplay]
+    set PC, op_done
+    :not_op_div
+    ifn [operator], "*"
+    	set PC, not_op_mul
+    mul [accumulator], [onDisplay]
+    set PC, op_done
+    :not_op_mul
+    
+    ; no operator was active, so we just do nothing
+    set PC, not_eq
+    
+    :op_done
+    set [onDisplay], [accumulator]
+    set [accumulator], 0
+    
+    :not_eq
+
+    
+    :continue
+    set PC, POP
+    
+:printDisplay  ; C is the value to display
+	set PUSH, X
+    set PUSH, Y
+    set PUSH, A
+    set PUSH, J
+    set PUSH, I
+    set PUSH, C
+    
+	; our divisor
+    set X, [displayPositionX]
+    set Y, [displayPositionY]
+	
+    jsr __getScreenPos
+    
+    
+	set A, 10000
+    ; digits printed so far
+    set J, 0
+    :printLoop
+    	set I, C
+        div I, A
+              
+        ifn I, 0
+        	set PC, printNonZero
+        :printZero
+        	;last digit always gets printed
+            ife A, 1
+            	set PC, printNonZero
+            ; don't print zeroes unless we've already 
+            ; printed something                
+            ife J, 0
+                set PC, printBlank
+            set PC, printNonZero
+        	:printBlank
+            set [B], 0x0000
+            set PC, nextDigit
+		:printNonZero    
+			set [B], 0xa000          
+            bor [B], [digits+I]
+            mul I, A
+            add J, 1
+            sub C, I
+            set PC, nextDigit
+    :nextDigit
+		add B, 1            
+    	div A, 10        
+        ifg A, 0        
+    	    set PC, printLoop
+    set C, POP
+    set I, POP
+    set J, POP
+    set A, POP
+    set Y, POP
+    set X, POP
+    set PC, POP
+    
+    
+
+; ---- standard lib
+
+:__getchar
+	set PUSH, B
+	set PUSH, C
+    :__getchar_wait
+    set C, [keyboardBufferPos]
+    add C, 0x9000   
+
+    ifn [C], 0
+    	set PC, __getchar_grabkey
+	jsr __advanceKeyboardBuffer
+    
+    ; here we call main_update to allow general processing
+    ; while waiting for keys
+    jsr __main_update_callback
+    
+	set PC, __getchar_wait
+    
+    :__getchar_grabkey
+    set A, [C]    
+    set [C], 0
+	jsr __advanceKeyboardBuffer
+    
+    :__getchar_done
+
+    ; returns char in A
+	set C, POP
+    set B, POP
+    set PC, POP
+    
+:__advanceKeyboardBuffer
+	add [keyboardBufferPos], 1
+    ifg [keyboardBufferPos], 0xf
+    	set [keyboardBufferPos], 0
+    set PC, POP
+    
+    
+:__clear_screen
+ 	set PUSH, A
+ 	set A, 0x8000
+    :__clear_screen_loop
+    	set [A], 0
+        add A, 1
+        ifg 0x817f, A
+        	set PC, __clear_screen_loop
+    set A, POP
+	set PC, POP
+    
+ :__clearToColor
+ 	set PUSH, A
+    set A, 0x8000    
+    :clearToColor_loop
+    	set [A], C
+        add A, 1
+        ifg 0x817f, A
+        	set PC, clearToColor_loop
+    set A, POP
+    set PC, POP
+    
+ :__getScreenPos
+    ; screen position
+    set B, Y  
+    shl B, 5
+    add B, X    
+    add B, 0x8000    
+    set PC, POP
+ 	
+ ; oddly this call is seemingly trashing the stack
+ ; whatever it is, it's destroying B..
+ :__drawString
+ 	set PUSH, A
+    set PUSH, B
+ 	jsr __getScreenPos
+    :writeLoop
+    	ife [A], 0
+        	set PC, __drawString_done
+    	set [B], C
+        bor [B], [A]
+        add B, 1
+        add A, 1
+        set PC, writeLoop
+    :__drawString_done
+    set B, POP
+    set A, POP
+    set PC, POP
+    
+:__drawChar
+	jsr __getScreenPos
+    set [B], C
+    and A, 0xff
+    bor [B], A
+    set PC, POP
+
+    
+:__drawLine  ; x,y=x,y z=style_offset i = w
+	set PUSH, X
+    set PUSH, Y
+    set PUSH, Z
+    set PUSH, I
+    set PUSH, A
+    set PUSH, B
+    set PUSH, C
+	
+	jsr __getScreenPos    
+
+    set C, 0
+    
+    :__drawLine_loop    
+        
+    	set [B], 0x7000
+
+		set A, Z
+        ifn C, 0
+        	set PC, not_left
+        shr A, 8
+        set PC, actually_draw
+        
+        :not_left
+        set X, I
+        sub X, 1
+        ifn C, X
+        	set PC, not_right
+        shr A, 8
+        set PC, actually_draw
+        :not_right
+		and A, 0xff
+        
+        :actually_draw
+    	bor [B], A
+        add B, 1
+        add C, 1
+        ifg B, 0x817f
+        	set PC, drawLine_done
+        ifg I, C
+        	set PC, __drawLine_loop
+            
+    set C, POP       
+	set B, POP
+    set A, POP
+    set I, POP
+    set Z, POP
+    set Y, POP
+    set X, POP
+	:drawLine_done
+	set PC, POP
+    
+:__drawTemplateBox ;x,y=x,y A=styleString i,j=w,h
+	set PUSH, Z
+    set PUSH, B
+    
+	set Z, [A]
+    shl Z, 8
+    bor Z, [A+1]
+    
+    set B, [A+2]
+    shl B, 8
+    bor B, [A+3]
+    jsr __drawBox
+    
+    set B, POP
+    set Z, POP
+    
+    set PC, POP
+    
+:__drawBox	;x,y=x,y  z=styleChars [side, mid] i,j=w,h
+			;b=styleChars [top]
+    set PUSH, C
+    set PUSH, A
+    set C, 0
+    set A, Z
+    :__drawBox_loop
+    	set PUSH, X
+        set PUSH, Y
+    	ife C, 0
+        	set PC, horizontal
+
+		set X, J
+        sub X, 1
+        ife C, X
+        	set PC, horizontal
+
+	:middle
+        set Z, A
+        set PC, draw
+
+    :horizontal
+        set Z, B
+        ;and Z, 0xff00
+        ;bor Z, B
+    :draw
+        set Y, POP
+        set X, POP
+        jsr __drawLine
+        add C, 1
+        add Y, 1
+        ifg J, C
+        	set PC, __drawBox_loop
+        
+        
+    :__drawBox_done
+    set A, POP
+    set C, POP
+    set PC, POP
+    
+:__memCopy ; A, B are the buffers, C is the count
+    :__memCopy_loop
+    	set [B], [A]
+        sub C, 1
+        ifg C, 0
+        	set PC, __memCopy_loop
+    set PC, POP
+
+
+; --- here's where I'll store the double-buffered screen
+:screenBuffer	
