@@ -67,3 +67,10 @@ function table_empty (self)
         return true
 end
 
+-- split path into directory, file and extension
+function split_file_name(name)
+        local dir, file = string.match(name, '(.+/)([^/]+)')
+        local base, ext = string.match(file or name, '(.+)[.]([^/.]+)')
+        return dir, base, ext
+end
+

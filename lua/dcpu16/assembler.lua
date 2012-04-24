@@ -257,8 +257,8 @@ function DA.new()
                 return self
         end
 
-        function t.dump(self)
-                local out = io.stdout
+        function t.dump(self, _out)
+                local out = _out or io.stdout
 
                 dbgf(1, "pc=0x%04x end", s.pc)
                 dbgf(1, "#memory=%u", #s.memory)
@@ -273,6 +273,35 @@ function DA.new()
                         end
                         out:write("\n")
                         o = o + 8
+                end
+        end
+        
+        function t.write(self, _out, _endian)
+                local out = _out or io.stdout
+                local endian = string.upper(_endian or 'l')
+
+                dbgf(1, "pc=0x%04x end", s.pc)
+                dbgf(1, "#memory=%u", #s.memory)
+
+                local encode
+                if endian == 'L' then -- little endian
+                        encode = function(word)
+                                return string.char(
+                                        word % 0x100,
+                                        (word / 0x100) % 0x100)
+                        end
+                else                  -- big endian
+                        encode = function(word)
+                                return string.char(
+                                        (word / 0x100) % 0x100,
+                                        word % 0x100)
+                        end
+                end
+
+                for addr = 0,#s.memory do
+                        local word = s.memory[addr] or 0
+
+                        out:write(encode(word))
                 end
         end
 

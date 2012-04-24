@@ -34,18 +34,36 @@ local function assemble(prog)
 
         a:append(prog)
 
-        a:dump()
-
         return a
 end
 
 
 ------------------------------------------------------------------------
 
-if #arg ~= 1 then
-    die'provide a single file'
+if #arg < 1 or #arg > 2 then
+    die(arg[0].." <program.dasm> [ <output.bin> ]")
+end
+
+local infile = arg[1]
+local outfile = arg[2]
+if outfile == nil then
+        local dir, base, ext = split_file_name(infile)
+
+        if base == nil then
+                outfile = infile..".out"
+        else
+                outfile = base..".out"
+        end
+        io.stderr:write("output going to "..outfile.."\n")
 end
 
 local prog = parse_file(arg[1])
-local ret = assemble(prog)
+local a = assemble(prog)
+
+if debug_level > 0 then
+        a:dump()
+end
+
+local f = assert(io.open(outfile, "w+"))
+a:write(f)
 
