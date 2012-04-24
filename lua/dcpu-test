@@ -62,7 +62,7 @@ local option_handlers = {
             .." -d --debug         - turn on debug\n"
             .." -p --parse <code>  - run parser on some code\n"
             )
-        return 0
+        os.exit(0)
     end,
     d=function(arg,i)
         debug = true
@@ -96,6 +96,8 @@ for i = 1, #arg do
 
         local consume = h(arg,i)
         i = i + consume
+    else
+        die("cannot parse command line argument: "..a)
     end
 end
 
