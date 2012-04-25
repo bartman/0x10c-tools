@@ -26,24 +26,31 @@ end
 ------------------------------------------------------------------------
 
 local infile
+local program
 
 local long_options = {
         help='h',
         debug='d',
+        code='c',
 }
 
 local option_handlers = {
         h=function(arg,i)
-                print("dcpu-parse [options...] <infile>\n"
+                print("dcpu-parse [options...] [ -c <code> | <infile> ]\n"
                 .."\n"
                 .." -h --help          - print this help\n"
                 .." -d --debug         - turn on debug\n"
+                .." -c --code <code>   - parse a string instead of a file\n"
                 )
                 os.exit(0)
         end,
         d=function(arg,i)
                 debug_level = debug_level + 1
                 return 0
+        end,
+        c=function(arg,i)
+                program = arg[i]
+                return 1
         end,
         _=function(arg,i)
                 if infile then
@@ -56,15 +63,19 @@ local option_handlers = {
 
 parse_args(arg, option_handlers, long_options)
 
-if infile == nil then
-        die(arg[0].." [options...] <program.dasm>")
+if program == nil and infile ~= nil then
+        local f = assert(io.open(infile))
+        local program = f:read'*all'
+        f:close()
+elseif program ~= nil and infile == nil then
+        -- nothing, continue
+else
+        die(arg[0].." expecting either a <file> or -c <code>")
 end
 
 local d = DP.new()
-local f = assert(io.open(arg[1]))
-local program = f:read'*all'
 local res, suc, msg = d:newparse(program, arg[1])
 dump(res, '"'..program..'"  =>  ')
-f:close()
 if msg then print("\n"..msg.."\n") end
 if not suc then os.exit(1) end
+
