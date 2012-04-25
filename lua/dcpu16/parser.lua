@@ -406,8 +406,8 @@ function DP.new()
                                * w0;
                 line_label  = colon * token('label', variable_name);
                 line_gisn   = token('op', gop) * w1 *
-                              token('a', _opargtb) * comma *
-                              token('b', _opargtb);
+                              token('b', _opargtb) * comma *
+                              token('a', _opargtb);
                 line_sisn   = token('op', sop) * w1 *
                               token('a', _opargtb);
                 line_cmnt   = token('comment', semi * (1 - eol)^0);
