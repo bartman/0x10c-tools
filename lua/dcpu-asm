@@ -40,12 +40,49 @@ end
 
 ------------------------------------------------------------------------
 
-if #arg < 1 or #arg > 2 then
-    die(arg[0].." <program.dasm> [ <output.bin> ]")
+local infile
+local outfile
+
+local long_options = {
+        help='h',
+        debug='d',
+        output='o',
+}
+
+local option_handlers = {
+        h=function(arg,i)
+                print("dcpu-asm [options...]\n"
+                .."\n"
+                .." -h --help          - print this help\n"
+                .." -d --debug         - turn on debug\n"
+                .." -o --output <bin>  - where to write output\n"
+                )
+                os.exit(0)
+        end,
+        d=function(arg,i)
+                debug = true
+                return 0
+        end,
+        o=function(arg,i)
+                outfile = arg[i]
+                return 1
+        end,
+        _=function(arg,i)
+                if infile then
+                        die"can only specify input file once"
+                end
+                infile = arg[i]
+                return 1
+        end
+}
+
+parse_args(arg, option_handlers, long_options)
+
+
+if infile == nil then
+        die(arg[0].." [options...] <program.dasm>")
 end
 
-local infile = arg[1]
-local outfile = arg[2]
 if outfile == nil then
         local dir, base, ext = split_file_name(infile)
 
@@ -57,7 +94,7 @@ if outfile == nil then
         io.stderr:write("output going to "..outfile.."\n")
 end
 
-local prog = parse_file(arg[1])
+local prog = parse_file(infile)
 local a = assemble(prog)
 
 if debug_level > 0 then

@@ -74,3 +74,38 @@ function split_file_name(name)
         return dir, base, ext
 end
 
+-- parse command line arguments
+-- arg             - the global arg array
+-- option_handlers - { h=function(arg,i) handler for -h end ... }
+-- long_options    - { help='h' ... }
+function parse_args(arg, option_handlers, long_options)
+        long_options = long_options or {}
+        local i = 1
+        while i <= #arg do
+                local a=arg[i]
+
+                local consume = #arg
+                local h
+                if a:sub(1,1) == '-' then
+                        local op
+                        if a:sub(2,2) == '-' then
+                                op = long_options[a:sub(3)]
+                        elseif a:sub(2,2) and a:sub(3,3):len() == 0 then
+                                op = a:sub(2)
+                        else
+                                die("invalid option: "..a)
+                        end
+
+                        i = i + 1
+                        h = option_handlers[op]
+                else
+                        h = option_handlers._
+                end
+                if not h then
+                        die("cannot parse command line argument: "..a)
+                end
+
+                local consume = h(arg,i)
+                i = i + consume
+        end
+end
