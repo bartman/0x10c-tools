@@ -9,7 +9,7 @@ The implementation is a mix of lua and C.
 The assembler uses lpeg (lua implementation of PEG) to parse the input file.  The following are a minimum requirement
 for running the assembler.
 
-        apt-get install liblua5.1-lpeg-dev liblua5.1-0-dev
+        apt-get install lua5.1 liblua5.1-lpeg-dev liblua5.1-0-dev liblua5.1-posix1
 
 # Assembler
 
