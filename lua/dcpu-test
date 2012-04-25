@@ -74,32 +74,8 @@ local option_handlers = {
     end
 }
 
-for i = 1, #arg do
-    local a=arg[i]
-    i = i + 1
+parse_args(arg, option_handlers, long_options)
 
-    if a:sub(1,1) == '-' then
-
-        local op
-        if a:sub(2,2) == '-' then
-            op = long_options[a:sub(3)]
-        elseif a:sub(2,2) and a:sub(3,3):len() == 0 then
-            op = a:sub(2)
-        else
-            die("invalid option: "..a)
-        end
-
-        local h = option_handlers[op]
-        if not h then
-            die("unknonw option: "..a)
-        end
-
-        local consume = h(arg,i)
-        i = i + consume
-    else
-        die("cannot parse command line argument: "..a)
-    end
-end
 
 -- ------------------------------------------------------------------------
 -- default test cases

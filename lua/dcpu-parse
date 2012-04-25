@@ -10,15 +10,48 @@ function dump(...)
         print(DataDumper(...))
 end
 
-if #arg == 1 then
-        local d = DP.new()
-        local f = assert(io.open(arg[1]))
-        local program = f:read'*all'
-        local res, suc, msg = d:newparse(program)
-        dump(res, '"'..program..'"  =>  ')
-        f:close()
-        if msg then print("\n"..msg.."\n") end
-        if not suc then os.exit(1) end
-else
-        die'provide a single file'
+------------------------------------------------------------------------
+
+local infile
+
+local long_options = {
+        help='h',
+        debug='d',
+}
+
+local option_handlers = {
+        h=function(arg,i)
+                print("dcpu-parse [options...] <infile>\n"
+                .."\n"
+                .." -h --help          - print this help\n"
+                .." -d --debug         - turn on debug\n"
+                )
+                os.exit(0)
+        end,
+        d=function(arg,i)
+                debug = true
+                return 0
+        end,
+        _=function(arg,i)
+                if infile then
+                        die"can only specify input file once"
+                end
+                infile = arg[i]
+                return 1
+        end
+}
+
+parse_args(arg, option_handlers, long_options)
+
+if infile == nil then
+        die(arg[0].." [options...] <program.dasm>")
 end
+
+local d = DP.new()
+local f = assert(io.open(arg[1]))
+local program = f:read'*all'
+local res, suc, msg = d:newparse(program)
+dump(res, '"'..program..'"  =>  ')
+f:close()
+if msg then print("\n"..msg.."\n") end
+if not suc then os.exit(1) end

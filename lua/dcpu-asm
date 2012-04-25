@@ -51,7 +51,7 @@ local long_options = {
 
 local option_handlers = {
         h=function(arg,i)
-                print("dcpu-asm [options...]\n"
+                print("dcpu-asm [options...] <infile>\n"
                 .."\n"
                 .." -h --help          - print this help\n"
                 .." -d --debug         - turn on debug\n"
