@@ -126,7 +126,7 @@ local prog = parse_file(infile)
 local a = assemble(prog)
 
 if debug_level > 0 then
-        a:dump()
+        a:dump(io.stderr)
 end
 
 local f = assert(io.open(outfile, "w+"))
