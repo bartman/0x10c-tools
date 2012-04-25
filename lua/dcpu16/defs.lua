@@ -5,24 +5,24 @@
 local DD = {}
 
 DD.generic_registers = {
-        A={ num=0 },
-        B={ num=1 },
-        C={ num=2 },
-        X={ num=3 },
-        Y={ num=4 },
-        Z={ num=5 },
-        I={ num=6 },
-        J={ num=7 },
+        A={ num=0x00, mref_solo=0x08, mref_ofs=0x10, },
+        B={ num=0x01, mref_solo=0x09, mref_ofs=0x11, },
+        C={ num=0x02, mref_solo=0x0a, mref_ofs=0x12, },
+        X={ num=0x03, mref_solo=0x0b, mref_ofs=0x13, },
+        Y={ num=0x04, mref_solo=0x0c, mref_ofs=0x14, },
+        Z={ num=0x05, mref_solo=0x0d, mref_ofs=0x15, },
+        I={ num=0x06, mref_solo=0x0e, mref_ofs=0x16, },
+        J={ num=0x07, mref_solo=0x0f, mref_ofs=0x17, },
 }
 
 DD.special_registers = {
-        POP ={ num=0x18, a=1,             },    -- [SP++]
-        PUSH={ num=0x18,      b=1         },    -- [--SP]
-        PEEK={ num=0x19, a=1, b=1         },    -- [SP]
-        PICK={ num=0x1a, a=1, b=1         },    -- [SP + next word]
-        SP  ={ num=0x1b, a=1, b=1, mref=1 },
-        PC  ={ num=0x1c, a=1, b=1         },
-        EX  ={ num=0x1d, a=1, b=1         },
+        POP ={ num=0x18, a=1,                                            },    -- [SP++]
+        PUSH={ num=0x18,      b=1                                        },    -- [--SP]
+        PEEK={ num=0x19, a=1, b=1                                        },    -- [SP]
+        --PICK={ num=0x1a, a=1, b=1                                        },    -- [SP + next word]
+        SP  ={ num=0x1b, a=1, b=1, mref=1, mref_solo=0x19, mref_ofs=0x1a },
+        PC  ={ num=0x1c, a=1, b=1                                        },
+        EX  ={ num=0x1d, a=1, b=1                                        },
 }
 
 function DD.special_regs_marked_with(self, tag)

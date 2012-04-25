@@ -78,16 +78,18 @@ function DA.new()
                 dbgf(1,"  >> arg=%s", DataDumper(arg,""))
 
                 if arg.greg then
-                        local gr = DD.generic_registers[arg.greg]
                         dbg(3,"", "greg", arg.greg)
+
+                        local gr = DD.generic_registers[arg.greg]
                         if not gr then
                                 die("don't know how to encode reg '"..(arg.greg).."'")
                         end
                         num = gr.num
 
                 elseif arg.sreg then
-                        local sr = DD.special_registers[arg.sreg]
                         dbg(3,"", "sreg", arg.sreg)
+
+                        local sr = DD.special_registers[arg.sreg]
                         if not sr then
                                 die("don't know how to encode reg '"..(arg.sreg).."'")
                         end
@@ -98,18 +100,21 @@ function DA.new()
 
                 elseif arg.num ~= nil then
                         dbg(3,"", "num", arg.num)
+
                         local n = tonumber(arg.num)
-                        if n >= 0 and n < 0x20 then
+                        if AorB == 'a' and n >= 0 and n < 0x20 then
                                 num = n + 0x20
                         else
                                 num = 0x1f
                                 s:mem_append(n)
+                                isn.length = isn.length + 1
                         end
 
                 elseif arg.var then
                         dbg(3,"", "var", arg.var)
 
                         local label_used_at = s:mem_alloc(1)
+                        isn.length = isn.length + 1
 
                         local label_offset = s.labels[arg.var]
                         if label_offset ~= nil then
@@ -130,27 +135,37 @@ function DA.new()
                         num = 0x1f
 
                 elseif arg.mref then
-                        local gr = nil
+                        local reg = nil
                         if arg.mref.greg then
-                                gr = DD.generic_registers[arg.mref.greg]
-                                if not gr then
+                                reg = DD.generic_registers[arg.mref.greg]
+                                if not reg then
                                         die("don't know how to encode reg '"..(arg.mref.greg).."' of "..DataDumper(arg,""))
+                                end
+                        elseif arg.mref.sreg then
+                                reg = DD.special_registers[arg.mref.sreg]
+                                if not reg then
+                                        die("don't know how to encode reg '"..(arg.mref.sreg).."' of "..DataDumper(arg,""))
+                                end
+                                if not reg.mref then
+                                        die("cannot use register '"..(arg.mref.sreg).."' in memory reference,  "..DataDumper(arg,""))
                                 end
                         end
 
-                        if gr and arg.mref.num then
+                        if reg and arg.mref.num then
 
-                                num = 0x10 + gr.num
+                                num = reg.mref_ofs
                                 s:mem_append(arg.mref.num)
+                                isn.length = isn.length + 1
 
-                        elseif gr then
+                        elseif reg then
 
-                                num = 0x08 + gr.num
+                                num = reg.mref_solo
 
                         elseif arg.mref.num then
 
                                 num = 0x1e
                                 s:mem_append(arg.mref.num)
+                                isn.length = isn.length + 1
 
                         else
                                 die("don't know how to encode mref "..DataDumper(arg.mref,""))
@@ -164,13 +179,14 @@ function DA.new()
         end
 
         local function assemble_gisn(num, isn)
+                -- encoding of a generic instruction is aaaaaabbbbbooooo (6a/5b/5o)
                 dbg(2,"", (isn.op)..'('..xx(num)..')', a, b)
 
                 isn.offset, isn.length = s:mem_append(num)
                 isn.finalize = nil
 
-                assemble_isn_arg(isn.a, isn, 'a', 16)    -- 16 to shift by 4 bits
-                assemble_isn_arg(isn.b, isn, 'b', 1024)  -- 1024 to shift by 10 bits
+                assemble_isn_arg(isn.a, isn, 'a', 32)    -- 32 to shift by 5 bits
+                assemble_isn_arg(isn.b, isn, 'b', 2048)  -- 2048 to shift by 11 bits
 
                 dbg(1,">> ".. table.concat(lmap(function(n)
                         return string.format("0x%04x", n)
@@ -178,12 +194,13 @@ function DA.new()
         end
 
         local function assemble_sisn(num, isn)
+                -- encoding of a special instruction is aaaaaaooooo00000 (6a/5o)
                 dbg(2,"", (isn.op)..'('..xx(num)..')', a, b)
 
-                isn.offset, isn.length = s:mem_append(num)
+                isn.offset, isn.length = s:mem_append(num*32) -- shift up by 5 bits
                 isn.finalize = nil
 
-                assemble_isn_arg(isn.a, isn, 'a', 1024)    -- 1024 to shift by 10 bits
+                assemble_isn_arg(isn.a, isn, 'a', 2048)    -- 2048 to shift by 11 bits
 
                 dbg(1,">> ".. table.concat(lmap(function(n)
                         return string.format("0x%04x", n)
@@ -216,7 +233,7 @@ function DA.new()
                 end
         end
         local function handle_op(block)
-                dbgf(1, "pc=0x%04x op '%s'", s.pc, DataDumper({block.op,block.a,block.b}, ""))
+                dbgf(1, "pc=0x%04x op '%s'", s.pc, DataDumper({block.op,block.b,block.a}, ""))
 
                 local opcode = string.upper(block.op)
                 local op = DD.generic_opcodes[opcode]
