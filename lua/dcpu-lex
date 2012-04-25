@@ -1,11 +1,24 @@
 #!/usr/bin/lua
 
+require "posix"
+local source = debug.getinfo(1).source
+local dir = string.match(source, "@(.*)/[^/]*")
+if dir then
+        local link = posix.readlink(source:match("@(.*)"))
+        if link then
+                source = dir .. '/' .. link
+                dir = string.match(source, "(.*)/[^/]*")
+        end
+end
+if dir then
+        package.path = dir .. '/?.lua;' .. package.path
+end
+
 local lpeg = require 'lpeg'
 local locale = lpeg.locale();
 local P, R, S, C = lpeg.P, lpeg.R, lpeg.S
 local C, Cc, Ct, Cg = lpeg.C, lpeg.Cc, lpeg.Ct, lpeg.Cg
 
-package.path = './lua/?.lua;' .. package.path
 local DP = require 'dcpu16.parser'
 require 'dcpu16.util'
 
