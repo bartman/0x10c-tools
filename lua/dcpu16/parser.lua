@@ -143,6 +143,7 @@ function DP.new()
 
         -- the new class and private variables
         local t = {}
+        local parsing_file = nil
         local ct_line = 1
         local mt_line = 1
         local error_line = nil
@@ -194,7 +195,10 @@ function DP.new()
                         return a
                 end
 
-                if not b.line then b.line = ct_line end
+                if not b.line then
+                        b.program = parsing_file
+                        b.line = ct_line
+                end
 
                 if type(a) ~= 'table' then
                         -- this is the start token
@@ -449,7 +453,8 @@ function DP.new()
                 error_msg = nil
         end
 
-        function t.parse(self, program, debug)
+        function t.parse(self, program, file, debug)
+                parsing_file = file
                 local r = lpeg.match(grammar, program)
                 if error_line then
                         local msg = "ERROR: parsing line "..(tostring(error_line))..": "..error_msg
@@ -471,9 +476,9 @@ function DP.new()
                 return r, true
         end
 
-        function t.newparse(self, program, debug)
+        function t.newparse(self, program, file, debug)
                 self:reset()
-                return self:parse(program, debug)
+                return self:parse(program, file, debug)
         end
 
         return t

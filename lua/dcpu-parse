@@ -63,7 +63,7 @@ end
 local d = DP.new()
 local f = assert(io.open(arg[1]))
 local program = f:read'*all'
-local res, suc, msg = d:newparse(program)
+local res, suc, msg = d:newparse(program, arg[1])
 dump(res, '"'..program..'"  =>  ')
 f:close()
 if msg then print("\n"..msg.."\n") end

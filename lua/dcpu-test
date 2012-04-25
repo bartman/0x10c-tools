@@ -35,7 +35,7 @@ local debug_parser = false
 -- helpers for running tests
 
 function test_parser(program, expectation)
-    local r,s,msg = d:newparse(program, debug_parser)
+    local r,s,msg = d:newparse(program, 'test', debug_parser)
     if type(expectation) == 'boolean' then
         if expectation and s then
             total = total + 1

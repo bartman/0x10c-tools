@@ -21,6 +21,7 @@ function DAS.new()
                 self.pc = 0;
                 self.memory = {};
                 self.labels = {};
+                self.programs = {};
                 return self
         end
         
@@ -274,6 +275,7 @@ function DA.new()
                                 block:finalize()
                         end
                 end
+                table.insert(s.programs, prog)
                 return self
         end
 
@@ -322,6 +324,27 @@ function DA.new()
                         local word = s.memory[addr] or 0
 
                         out:write(encode(word))
+                end
+        end
+
+        function t.write_intermediate(self, _out)
+                local out = _out or io.stdout
+
+                dbgf(1, "pc=0x%04x end", s.pc)
+                dbgf(1, "#memory=%u", #s.memory)
+
+                for i,prog in ipairs(s.programs) do
+                        for j,isn in ipairs(prog) do
+                                if isn.offset ~= nil and isn.length ~= nil then
+                                        out:write(string.format("%s\t%u\t0x%04x\t", isn.program, isn.line, isn.offset))
+                                        for k=0,(isn.length-1) do
+                                                local addr = isn.offset + k
+                                                local word = s.memory[addr] or 0
+                                                out:write(string.format("0x%04x", word).." ")
+                                        end
+                                        out:write("\n")
+                                end
+                        end
                 end
         end
 
