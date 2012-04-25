@@ -71,11 +71,11 @@ function DA.new()
         local s = DAS.new()
 
         -- update isn object with compiled words
-        local function assemble_isn_arg(arg, isn, mult)
+        local function assemble_isn_arg(arg, isn, AorB, mult)
 
                 local num = 0
 
-                dbgf(1,"  >> arg=%s\n", DataDumper(arg,""))
+                dbgf(1,"  >> arg=%s", DataDumper(arg,""))
 
                 if arg.greg then
                         local gr = DD.generic_registers[arg.greg]
@@ -90,6 +90,9 @@ function DA.new()
                         dbg(3,"", "sreg", arg.sreg)
                         if not sr then
                                 die("don't know how to encode reg '"..(arg.sreg).."'")
+                        end
+                        if not sr[AorB] then
+                                die("special register '"..(arg.sreg).."' not allowed as '"..(AorB).."'")
                         end
                         num = sr.num
 
@@ -166,8 +169,8 @@ function DA.new()
                 isn.offset, isn.length = s:mem_append(num)
                 isn.finalize = nil
 
-                assemble_isn_arg(isn.a, isn, 16)    -- 16 to shift by 4 bits
-                assemble_isn_arg(isn.b, isn, 1024)  -- 1024 to shift by 10 bits
+                assemble_isn_arg(isn.a, isn, 'a', 16)    -- 16 to shift by 4 bits
+                assemble_isn_arg(isn.b, isn, 'b', 1024)  -- 1024 to shift by 10 bits
 
                 dbg(1,">> ".. table.concat(lmap(function(n)
                         return string.format("0x%04x", n)
@@ -180,7 +183,7 @@ function DA.new()
                 isn.offset, isn.length = s:mem_append(num)
                 isn.finalize = nil
 
-                assemble_isn_arg(isn.a, isn, 1024)    -- 1024 to shift by 10 bits
+                assemble_isn_arg(isn.a, isn, 'a', 1024)    -- 1024 to shift by 10 bits
 
                 dbg(1,">> ".. table.concat(lmap(function(n)
                         return string.format("0x%04x", n)
@@ -190,16 +193,16 @@ function DA.new()
         -- top level handers
 
         local function handle_label(block)
-                dbgf(1, "pc=0x%04x label '%s'\n", s.pc, block.label)
+                dbgf(1, "pc=0x%04x label '%s'", s.pc, block.label)
                 if s.labels[block.label] ~= nil then
                         die(string.format("label '%s' already exists at 0x%04x", block.label, s.labels[block.label]))
                 end
                 s.labels[block.label] = s.pc
         end
         local function handle_data(block)
-                dbgf(1, "pc=0x%04x data '%s'\n", s.pc, DataDumper(block.data, ""))
+                dbgf(1, "pc=0x%04x data '%s'", s.pc, DataDumper(block.data, ""))
                 for i,datum in ipairs(block.data) do
-                        dbgf(1, "  > %s\n", DataDumper(datum, ""))
+                        dbgf(1, "  > %s", DataDumper(datum, ""))
                         if datum.num then
                                 s:mem_append(datum.num)
                         elseif datum.str then
@@ -213,7 +216,7 @@ function DA.new()
                 end
         end
         local function handle_op(block)
-                dbgf(1, "pc=0x%04x op '%s'\n", s.pc, DataDumper({block.op,block.a,block.b}, ""))
+                dbgf(1, "pc=0x%04x op '%s'", s.pc, DataDumper({block.op,block.a,block.b}, ""))
 
                 local opcode = string.upper(block.op)
                 local op = DD.generic_opcodes[opcode]
