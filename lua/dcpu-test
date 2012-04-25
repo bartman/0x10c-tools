@@ -16,13 +16,13 @@ local d = DP.new()
 
 local total = 0
 local failed = 0
-local debug = false
+local debug_parser = false
 
 -- ------------------------------------------------------------------------
 -- helpers for running tests
 
 function test_parser(program, expectation)
-    local r,s,msg = d:newparse(program, debug)
+    local r,s,msg = d:newparse(program, debug_parser)
     if type(expectation) == 'boolean' then
         if expectation and s then
             total = total + 1
@@ -65,7 +65,8 @@ local option_handlers = {
         os.exit(0)
     end,
     d=function(arg,i)
-        debug = true
+        debug_level = debug_level + 1
+        debug_parser = true
         return 0
     end,
     p=function(arg,i)

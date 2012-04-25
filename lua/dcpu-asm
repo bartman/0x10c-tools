@@ -60,7 +60,7 @@ local option_handlers = {
                 os.exit(0)
         end,
         d=function(arg,i)
-                debug = true
+                debug_level = debug_level + 1
                 return 0
         end,
         o=function(arg,i)
