@@ -64,7 +64,7 @@ end
 local long_options = {
     help='h',
     debug='d',
-    parse='p',
+    code='c',
 }
 
 local option_handlers = {
@@ -73,7 +73,7 @@ local option_handlers = {
             .."\n"
             .." -h --help          - print this help\n"
             .." -d --debug         - turn on debug\n"
-            .." -p --parse <code>  - run parser on some code\n"
+            .." -c --code <code>   - run parser on some code\n"
             )
         os.exit(0)
     end,
@@ -82,7 +82,7 @@ local option_handlers = {
         debug_parser = true
         return 0
     end,
-    p=function(arg,i)
+    c=function(arg,i)
         test_parser(arg[i],true)
         os.exit(0)
     end
