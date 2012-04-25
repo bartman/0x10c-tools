@@ -49,7 +49,7 @@ DD.generic_opcodes = {
         SHR={ num=0x0c, cycles=2 },
         ASR={ num=0x0d, cycles=2 },
         SHL={ num=0x0e, cycles=2 },
-        --        0x0f
+        STI={ num=0x0f, cycles=2 },
         IFB={ num=0x10, cycles=2 },
         IFC={ num=0x11, cycles=2 },
         IFE={ num=0x12, cycles=2 },
@@ -58,18 +58,28 @@ DD.generic_opcodes = {
         IFA={ num=0x15, cycles=2 },
         IFL={ num=0x16, cycles=2 },
         IFU={ num=0x17, cycles=2 },
+        --        0x18
+        --        0x19
+        ADX={ num=0x1a, cycles=3 },
+        SBX={ num=0x1b, cycles=3 },
+        --        0x1c
+        --        0x1d
+        --        0x1e
+        --        0x1f
 }
 
 DD.special_opcodes = {
         JSR={ num=0x01, cycles=3 },
 
+        HCF={ num=0x07, cycles=9 },
+
         INT={ num=0x08, cycles=4 },
-        INT={ num=0x09, cycles=1 },
-        INT={ num=0x0a, cycles=1 },
+        IAG={ num=0x09, cycles=1 },
+        IAS={ num=0x0a, cycles=1 },
 
         HWN={ num=0x10, cycles=2 },
         HWQ={ num=0x11, cycles=4 },
-        HWQ={ num=0x12, cycles=4 },
+        HWI={ num=0x12, cycles=4 },
 }
 
 
