@@ -79,8 +79,8 @@ char * x10c_basic_generator(const struct x10c_isn *isn,
 
 	append("%s", isn->op_name);
 
-	p = x10c_append_arg(p, e, " ",  op->b.a, &words);
-	p = x10c_append_arg(p, e, ", ", op->b.b, &words);
+	p = x10c_append_arg(p, e, " ",  op->b.b, &words);
+	p = x10c_append_arg(p, e, ", ", op->b.a, &words);
 
 bail:
 	return buf;
