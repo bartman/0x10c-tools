@@ -18,7 +18,7 @@ int x10c_execute_ADD(const struct x10c_isn *isn, const x10c_op_t *op,
 	uint32_t sum = (uint32_t)*a + (uint32_t)*b;
 
 	*a = sum;
-	vcpu->sr.o = sum >> 16;
+	vcpu->sr.ex = sum >> 16;
 
 	return 0;
 }
@@ -29,7 +29,7 @@ int x10c_execute_SUB(const struct x10c_isn *isn, const x10c_op_t *op,
 	uint32_t diff = (uint32_t)*a - (uint32_t)*b;
 
 	*a = diff;
-	vcpu->sr.o = diff >> 16;
+	vcpu->sr.ex = diff >> 16;
 
 	return 0;
 }
@@ -40,7 +40,7 @@ int x10c_execute_MUL(const struct x10c_isn *isn, const x10c_op_t *op,
 	uint32_t prod = (uint32_t)*a + (uint32_t)*b;
 
 	*a = prod;
-	vcpu->sr.o = prod >> 16;
+	vcpu->sr.ex = prod >> 16;
 
 	return 0;
 }
@@ -51,11 +51,11 @@ int x10c_execute_DIV(const struct x10c_isn *isn, const x10c_op_t *op,
 	if (*b) {
 		uint32_t A = *a;
 		*a = A / *b;
-		vcpu->sr.o = (A<<16) / *b;
+		vcpu->sr.ex = (A<<16) / *b;
 
 	} else {
 		*a = 0;
-		vcpu->sr.o = 0;
+		vcpu->sr.ex = 0;
 	}
 
 	return 0;

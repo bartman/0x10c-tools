@@ -16,7 +16,7 @@
 #endif
 
 static x10c_word * x10c_vcpu_get_isn_arg(struct x10c_vcpu *vcpu,
-		x10c_word arg_desc, x10c_word *scratch)
+		x10c_word arg_desc, x10c_word *scratch, int is_b)
 {
 	x10c_word ofs;
 
@@ -36,21 +36,29 @@ static x10c_word * x10c_vcpu_get_isn_arg(struct x10c_vcpu *vcpu,
 		ofs += x10c_vcpu_advance_pc_word(vcpu);
 		return vcpu->ram + ofs;
 
-	case X10C_REG_POP:
-		ofs = vcpu->sr.sp ++;
-		return vcpu->ram + ofs;
+	case X10C_REG_PUSH_POP:
+		if (is_b) {
+			// this is a push
+			ofs = -- vcpu->sr.sp;
+			return vcpu->ram + ofs;
+		} else {
+			// this is a pop
+			ofs = vcpu->sr.sp ++;
+			return vcpu->ram + ofs;
+		}
 
 	case X10C_REG_PEEK:
 		ofs = vcpu->sr.sp;
 		return vcpu->ram + ofs;
 
-	case X10C_REG_PUSH:
-		ofs = -- vcpu->sr.sp;
+	case X10C_REG_PICK:
+		die("PICK not yet implemented");
+		ofs = vcpu->sr.sp;
 		return vcpu->ram + ofs;
 
 	case X10C_REG_SP:
 	case X10C_REG_PC:
-	case X10C_REG_O:
+	case X10C_REG_EX:
 		return &vcpu->sr.n[arg_desc - X10C_REG_SP];
 
 	case X10C_MREF_NEXT_WORD:
@@ -85,10 +93,10 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 	vcpu->sr.pc ++;
 
 	if (x10c_op_is_basic(op)) {
-		a = x10c_vcpu_get_isn_arg(vcpu, op->b.a, &tmp_a);
-		b = x10c_vcpu_get_isn_arg(vcpu, op->b.b, &tmp_b);
+		a = x10c_vcpu_get_isn_arg(vcpu, op->b.a, &tmp_a, 0);
+		b = x10c_vcpu_get_isn_arg(vcpu, op->b.b, &tmp_b, 1);
 	} else {
-		a = x10c_vcpu_get_isn_arg(vcpu, op->x.a, &tmp_a);
+		a = x10c_vcpu_get_isn_arg(vcpu, op->x.a, &tmp_a, 0);
 		b = NULL;
 	}
 
@@ -129,7 +137,7 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 
 static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 {
-#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP ---O  SK  OP------------- ISN------------------------------\n"
+#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX  SK  OP------------- ISN------------------------------\n"
 #define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x  %s  %-15s %s\n"
 
 	if (vcpu) {
@@ -146,7 +154,7 @@ static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 				vcpu->gr.a, vcpu->gr.b, vcpu->gr.c,
 				vcpu->gr.x, vcpu->gr.y, vcpu->gr.z,
 				vcpu->gr.i, vcpu->gr.j,
-				vcpu->sr.pc, vcpu->sr.sp, vcpu->sr.o,
+				vcpu->sr.pc, vcpu->sr.sp, vcpu->sr.ex,
 				vcpu->skip_next_op ? "sk" : "  ",
 				hex_buf, asm_buf);
 	} else

@@ -20,12 +20,12 @@ char * x10c_append_arg(char *p, char *e, const char *prefix, x10c_word arg_desc,
 	struct x10c_reg *reg;
 
 	switch(arg_desc) {
-	case X10C_REG_POP:
+	case X10C_REG_PUSH_POP:
 	case X10C_REG_PEEK:
-	case X10C_REG_PUSH:
+	case X10C_REG_PICK:
 	case X10C_REG_SP:
 	case X10C_REG_PC:
-	case X10C_REG_O:
+	case X10C_REG_EX:
 	case X10C_REG_A ... X10C_REG_J:
 		/* 0x00-0x07: register (A, B, C, X, Y, Z, I or J, in that order) */
 		reg = x10c_lookup_reg_for_num(arg_desc);

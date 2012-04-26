@@ -5,21 +5,20 @@
 
 #include "0x10c_def.h"
 
-#define X10C_OP_MAX_WORDS 3
 typedef union x10c_op {
 	struct {
-		x10c_word word[X10C_OP_MAX_WORDS];
+		x10c_word word[X10C_MAX_OP_LEN];
 	};
 	struct {
-		// basic encoding: bbbbbbaaaaaaoooo
-		x10c_word op:4;
+		// basic encoding: aaaaaabbbbbooooo
+		x10c_word op:5;
+		x10c_word b:5;
 		x10c_word a:6;
-		x10c_word b:6;
 	} b;
 	struct {
-		// non-basic encoding: aaaaaaoooooo0000
-		x10c_word zero:4;
-		x10c_word op:6;
+		// non-basic encoding: aaaaaaooooo00000
+		x10c_word zero:5;
+		x10c_word op:5;
 		x10c_word a:6;
 	} x;
 } x10c_op_t;

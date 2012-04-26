@@ -81,12 +81,12 @@ struct x10c_reg x10c_regs[X10C_REGS_MAX] = {
 	X10C_REG_ENTRY(Z,1),
 	X10C_REG_ENTRY(I,1),
 	X10C_REG_ENTRY(J,1),
-	X10C_REG_ENTRY(POP,0),
+	X10C_REG_ENTRY(PUSH_POP,0),
 	X10C_REG_ENTRY(PEEK,0),
-	X10C_REG_ENTRY(PUSH,0),
+	X10C_REG_ENTRY(PICK,0),
 	X10C_REG_ENTRY(SP,0),
 	X10C_REG_ENTRY(PC,0),
-	X10C_REG_ENTRY(O,0),
+	X10C_REG_ENTRY(EX,0),
 };
 
 struct x10c_reg * x10c_lookup_reg_for_name(const char *name)
