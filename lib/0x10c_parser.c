@@ -88,6 +88,8 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
 		memcpy(pr->ram + pr->ram_used, pl->op.word,
 				pl->word_count * sizeof(x10c_word));
 
+		pr->ram_used += pl->word_count;
+
 		list_add_tail(&pl->link, &pr->parsed_lines);
 	}
 
