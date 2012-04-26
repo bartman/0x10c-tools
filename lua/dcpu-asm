@@ -119,7 +119,7 @@ parse_args(arg, option_handlers, long_options)
 
 if program == nil and infile ~= nil then
         local f = assert(io.open(infile))
-        local program = f:read'*all'
+        program = f:read'*all'
         f:close()
 elseif program ~= nil and infile == nil then
         -- we were given a program
