@@ -86,6 +86,8 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 	op = x10c_vcpu_current_op(vcpu);
 
 	isn = x10c_lookup_isn_for_op(op);
+	if (!isn)
+		die("not a valid instruction 0x%04x", op->word[0]);
 
 	dbg("# step pc=%04x %s\n", vcpu->sr.pc, isn->op_name);
 
