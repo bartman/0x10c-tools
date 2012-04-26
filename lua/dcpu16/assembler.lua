@@ -186,8 +186,8 @@ function DA.new()
                 isn.offset, isn.length = s:mem_append(num)
                 isn.finalize = nil
 
-                assemble_isn_arg(isn.a, isn, 'a', 32)    -- 32 to shift by 5 bits
-                assemble_isn_arg(isn.b, isn, 'b', 2048)  -- 2048 to shift by 11 bits
+                assemble_isn_arg(isn.a, isn, 'a', 1024)  -- 1024 to shift by 10 bits
+                assemble_isn_arg(isn.b, isn, 'b', 32)    -- 32 to shift by 5 bits
 
                 dbg(1,">> ".. table.concat(lmap(function(n)
                         return string.format("0x%04x", n)
@@ -201,7 +201,7 @@ function DA.new()
                 isn.offset, isn.length = s:mem_append(num*32) -- shift up by 5 bits
                 isn.finalize = nil
 
-                assemble_isn_arg(isn.a, isn, 'a', 2048)    -- 2048 to shift by 11 bits
+                assemble_isn_arg(isn.a, isn, 'a', 1024)    -- 1024 to shift by 10 bits
 
                 dbg(1,">> ".. table.concat(lmap(function(n)
                         return string.format("0x%04x", n)
