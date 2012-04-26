@@ -9,6 +9,7 @@
 
 struct x10c_parsed_line;
 struct x10c_parser;
+struct lua_State;
 
 struct x10c_parsed_line {
 	struct list link;
@@ -16,36 +17,18 @@ struct x10c_parsed_line {
 	const char *file;
 	unsigned line;
 
-	char *buffer;
-	char *p;
-
-	int error;
-
-	const struct x10c_isn *isn;
-	x10c_op_t *op;
+	unsigned word_offset;
 	unsigned word_count;
 
-	const char *label;
+	x10c_op_t op;
+
+	//const char *label;
 };
 
 struct x10c_parser_ops {
-	int (*parse_file)(struct x10c_parser *pr, FILE *in);
+	int (*parse_file)(struct x10c_parser *pr, const char *filename);
 
-	void (*set_context) (struct x10c_parser *pr,
-			const char *file, unsigned line);
-
-	struct x10c_parsed_line * (*parse_line) (struct x10c_parser *pr,
-		const char *buf, size_t buf_len);
-
-	void (*add_label) (struct x10c_parser *pr, const char *name);
-
-	long (*find_label) (struct x10c_parser *pr,
-				const char *name);
-
-	void (*mark_unresolved) (struct x10c_parser *pr, const char *name,
-			x10c_word ofs);
-
-	int (*finalize) (struct x10c_parser *pr);
+	int (*parse_block)(struct x10c_parser *pr, const char *block);
 
 	void (*dump)(struct x10c_parser *pr, FILE *out);
 
@@ -53,17 +36,18 @@ struct x10c_parser_ops {
 };
 
 struct x10c_parser {
-	struct list parsed_lines; // list of struct x10c_parsed_line
-	struct list labels;       // list of struct x10c_parser_label
-	struct list unresolved;   // list of struct x10c_parser_unresolved
+	struct list parsed_lines;   // list of struct x10c_parsed_line
+	//struct list labels;         // list of struct x10c_parser_label
 
 	x10c_word *ram;
 	unsigned ram_words;
 	unsigned ram_used;
-	unsigned ram_allocated:1;
+	unsigned ram_allocated:1;   // is free() needed at cleanup
 
 	const char *file;
 	unsigned line;
+
+	struct lua_State *L;
 
 	struct x10c_parser_ops ops;
 };

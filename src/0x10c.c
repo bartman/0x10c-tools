@@ -7,6 +7,7 @@
 #include "0x10c_isn.h"
 #include "0x10c_vcpu.h"
 #include "0x10c_parser.h"
+#include "0x10c_util.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,32 +15,22 @@ int main(int argc, char *argv[])
 	struct x10c_parser *pr;
 	//struct x10c_parsed_line *pl;
 	struct x10c_vcpu *vcpu;
-	FILE *f;
 
 	filename = argv[1];
+	if (!filename)
+		die("need a filename");
 
 	vcpu = x10c_vcpu_new();
 	
 	pr = x10c_parser_new(filename, vcpu->ram, X10C_RAM_WORDS);
 
-	f = fopen(filename, "r");
-	if (!f) {
-		fprintf(stderr, "%s: %s\n",
-				filename, strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	pr->ops.parse_file(pr, f);
+	pr->ops.parse_file(pr, filename);
 
 	pr->ops.dump(pr, stdout);
-
-	pr->ops.finalize(pr);
 
 	pr->ops.dump(pr, stdout);
 
 	pr->ops.delete(pr);
-
-	fclose(f);
 
 	vcpu->ops.run(vcpu);
 

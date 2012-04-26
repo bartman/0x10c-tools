@@ -22,5 +22,11 @@ static inline void x10c_dump(FILE *out, x10c_word *data, unsigned count)
 		fprintf(out, "\n");
 }
 
+#define die(fmt,a...) ({ \
+		fflush(stdout); \
+		fprintf(stderr, "ERROR: " fmt "\n", ##a); \
+		exit(EXIT_FAILURE); \
+		})
+
 
 #endif // __included_0x10c_util_h__
