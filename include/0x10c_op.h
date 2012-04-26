@@ -35,6 +35,7 @@ static inline unsigned x10c_op_arg_len(unsigned arg_desc)
 		return 0;
 
 	case X10C_ARG_MREF_OFS_REG(A) ... X10C_ARG_MREF_OFS_REG(J):
+	case X10C_REG_PICK:
 	case X10C_MREF_NEXT_WORD:
 	case X10C_NEXT_WORD:
 		return 1;
