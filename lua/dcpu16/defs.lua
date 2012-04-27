@@ -43,13 +43,13 @@ DD.generic_opcodes = {
         DIV={ num=0x06, cycles=3 },
         DVI={ num=0x07, cycles=3 },
         MOD={ num=0x08, cycles=3 },
-        AND={ num=0x09, cycles=1 },
-        BOR={ num=0x0a, cycles=1 },
-        XOR={ num=0x0b, cycles=1 },
-        SHR={ num=0x0c, cycles=2 },
-        ASR={ num=0x0d, cycles=2 },
-        SHL={ num=0x0e, cycles=2 },
-        STI={ num=0x0f, cycles=2 },
+        MDI={ num=0x09, cycles=3 },
+        AND={ num=0x0a, cycles=1 },
+        BOR={ num=0x0b, cycles=1 },
+        XOR={ num=0x0c, cycles=1 },
+        SHR={ num=0x0d, cycles=2 },
+        ASR={ num=0x0e, cycles=2 },
+        SHL={ num=0x0f, cycles=2 },
         IFB={ num=0x10, cycles=2 },
         IFC={ num=0x11, cycles=2 },
         IFE={ num=0x12, cycles=2 },
@@ -64,8 +64,8 @@ DD.generic_opcodes = {
         SBX={ num=0x1b, cycles=3 },
         --        0x1c
         --        0x1d
-        --        0x1e
-        --        0x1f
+        STI={ num=0x1e, cycles=2 },
+        STD={ num=0x1e, cycles=2 },
 }
 
 DD.special_opcodes = {
@@ -76,6 +76,9 @@ DD.special_opcodes = {
         INT={ num=0x08, cycles=4 },
         IAG={ num=0x09, cycles=1 },
         IAS={ num=0x0a, cycles=1 },
+
+        IAP={ num=0x09, cycles=3 },
+        IAQ={ num=0x0a, cycles=2 },
 
         HWN={ num=0x10, cycles=2 },
         HWQ={ num=0x11, cycles=4 },
