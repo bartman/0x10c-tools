@@ -129,3 +129,4 @@ struct x10c_reg * x10c_lookup_reg_for_name(const char *name)
 
 	return NULL;
 }
+

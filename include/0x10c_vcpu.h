@@ -57,6 +57,13 @@ static inline x10c_op_t * x10c_vcpu_current_op(struct x10c_vcpu *vcpu)
 	return (void*)&vcpu->ram[ vcpu->st.sr.pc ];
 }
 
+// copy state from current to previous
+static inline void x10c_vcpu_backup_state(const struct x10c_vcpu *vcpu,
+		struct x10c_vcpu_state *pst)
+{
+	*pst = vcpu->st;
+}
+
 extern struct x10c_vcpu * x10c_vcpu_new(void);
 
 

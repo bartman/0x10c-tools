@@ -8,6 +8,7 @@
 #include "0x10c_isn.h"
 #include "0x10c_util.h"
 #include "0x10c_generator.h"
+#include "0x10c_colours.h"
 
 #if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
@@ -119,30 +120,33 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 {
 	int rc;
+	struct x10c_vcpu_state prev_st = {0,};
 
-	vcpu->ops.dump(NULL, stdout);
-	vcpu->ops.dump(vcpu, stdout);
+	vcpu->ops.dump_oneline(NULL, NULL, stdout);
+	vcpu->ops.dump_oneline(vcpu, NULL, stdout);
 
 	for(;;) {
-		x10c_word old_pc;
-
-		old_pc = vcpu->st.sr.pc;
+		x10c_vcpu_backup_state(vcpu, &prev_st);
 
 		rc = vcpu->ops.step(vcpu);
 		if (rc<0)
 			return rc;
 
-		vcpu->ops.dump(vcpu, stdout);
+		vcpu->ops.dump_oneline(vcpu, &prev_st, stdout);
 
-		if (old_pc == vcpu->st.sr.pc)
+		if (prev_st.sr.pc == vcpu->st.sr.pc)
 			return -EINTR;
 	}
 }
 
-static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
+/* this function dumps registers using ANSI colour codes */
+static void x10c_vcpu_dump_oneline(struct x10c_vcpu *vcpu,
+		const struct x10c_vcpu_state *old, FILE *out)
 {
 #define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
-#define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x %04x  %s  %-15s %s\n"
+#define Fr  "%s"       "%04x" RSTCLR
+#define Fsk CLR(B,RED) "%s"   RSTCLR
+#define DUMP_FMT ""Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr"   "Fr" "Fr" "Fr" "Fr"  "Fsk RSTCLR "  %-15s %s\n"
 
 	if (vcpu) {
 		char hex_buf[1024];
@@ -154,13 +158,27 @@ static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 		x10c_generate_asm(asm_buf, sizeof(asm_buf),
 				x10c_vcpu_current_op(vcpu));
 
+#define Dr(reg) \
+		(!old)                    ? CLR(N,WHITE) : \
+		(vcpu->st.reg < old->reg) ? CLR(B,RED) : \
+		(vcpu->st.reg > old->reg) ? CLR(B,GREEN) : \
+		                            CLR(N,WHITE), \
+		vcpu->st.reg
+
 		fprintf(out, DUMP_FMT,
-				vcpu->st.gr.a, vcpu->st.gr.b, vcpu->st.gr.c,
-				vcpu->st.gr.x, vcpu->st.gr.y, vcpu->st.gr.z,
-				vcpu->st.gr.i, vcpu->st.gr.j,
-				vcpu->st.sr.pc, vcpu->st.sr.sp,
-				vcpu->st.sr.ex, vcpu->st.sr.ia,
-				vcpu->st.skip_next_op ? "sk" : "  ",
+				Dr(gr.a),
+				Dr(gr.b),
+				Dr(gr.c),
+				Dr(gr.x),
+				Dr(gr.y),
+				Dr(gr.z),
+				Dr(gr.i),
+				Dr(gr.j),
+				Dr(sr.pc),
+				Dr(sr.sp),
+				Dr(sr.ex),
+				Dr(sr.ia),
+				vcpu->st.skipping ? "sk" : "  ",
 				hex_buf, asm_buf);
 	} else
 		fprintf(out, DUMP_HDR);
@@ -174,7 +192,7 @@ static void x10c_vcpu_delete (struct x10c_vcpu *vcpu)
 static struct x10c_vcpu_ops x10c_vcpu_ops = {
 	.step   = x10c_vcpu_step,
 	.run    = x10c_vcpu_run,
-	.dump   = x10c_vcpu_dump,
+	.dump_oneline = x10c_vcpu_dump_oneline,
 	.delete = x10c_vcpu_delete,
 };
 
