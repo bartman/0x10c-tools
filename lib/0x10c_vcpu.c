@@ -139,8 +139,8 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 
 static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 {
-#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX  SK  OP------------- ISN------------------------------\n"
-#define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x  %s  %-15s %s\n"
+#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
+#define DUMP_FMT "%04x %04x %04x %04x %04x %04x %04x %04x   %04x %04x %04x %04x  %s  %-15s %s\n"
 
 	if (vcpu) {
 		char hex_buf[1024];
@@ -156,7 +156,8 @@ static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 				vcpu->gr.a, vcpu->gr.b, vcpu->gr.c,
 				vcpu->gr.x, vcpu->gr.y, vcpu->gr.z,
 				vcpu->gr.i, vcpu->gr.j,
-				vcpu->sr.pc, vcpu->sr.sp, vcpu->sr.ex,
+				vcpu->sr.pc, vcpu->sr.sp,
+				vcpu->sr.ex, vcpu->sr.ia,
 				vcpu->skip_next_op ? "sk" : "  ",
 				hex_buf, asm_buf);
 	} else
