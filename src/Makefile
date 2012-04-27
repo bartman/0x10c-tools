@@ -3,9 +3,9 @@ SRCS   = 0x10c.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
-LUA_PKGS   = lua5.1 lua5.1-lpeg
-LUA_LIBS   = $(shell pkg-config --libs ${LUA_PKGS})
-LUA_CFLAGS = $(shell pkg-config --cflags ${LUA_PKGS})
+#LUA_PKGS   = lua5.1 lua5.1-lpeg
+#LUA_LIBS   = $(shell pkg-config --libs ${LUA_PKGS})
+#LUA_CFLAGS = $(shell pkg-config --cflags ${LUA_PKGS})
 
 LIBS   = ../lib/lib0x10c.a
 
