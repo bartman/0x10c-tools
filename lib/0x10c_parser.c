@@ -44,7 +44,8 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
 {
 	int rc;
 	char buf[4096];
-	char *str, tmp;
+	char *str;
+	int tmp;
 	char *tok_file, *tok_line, *tok_ofs, *tok_isn;
 	FILE *in;
 	struct x10c_parsed_line *pl;
@@ -78,9 +79,15 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
 		pl->word_offset = strtoul(tok_ofs, NULL, 0);
 
 		pl->word_count = sscanf(tok_isn,
-				"0x%04hx 0x%04hx 0x%04hx%c",
+				"0x%04hx 0x%04hx 0x%04hx %c",
 				&pl->op.word[0], &pl->op.word[1],
 				&pl->op.word[2], &tmp);
+
+		if (pl->word_count > 3) {
+			if (tmp != '\n' && tmp != '\r')
+				die("found garbage in intermediate format");
+			pl->word_count = 3;
+		}
 
 		if (pl->word_count > (pr->ram_words - pr->ram_used))
 			die("overflowed memory");
