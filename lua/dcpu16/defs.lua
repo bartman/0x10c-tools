@@ -47,9 +47,9 @@ DD.generic_opcodes = {
         AND={ num=0x0a, cycles=1 },
         BOR={ num=0x0b, cycles=1 },
         XOR={ num=0x0c, cycles=1 },
-        SHR={ num=0x0d, cycles=2 },
-        ASR={ num=0x0e, cycles=2 },
-        SHL={ num=0x0f, cycles=2 },
+        SHR={ num=0x0d, cycles=1 },
+        ASR={ num=0x0e, cycles=1 },
+        SHL={ num=0x0f, cycles=1 },
         IFB={ num=0x10, cycles=2 },
         IFC={ num=0x11, cycles=2 },
         IFE={ num=0x12, cycles=2 },
@@ -77,7 +77,7 @@ DD.special_opcodes = {
         IAG={ num=0x09, cycles=1 },
         IAS={ num=0x0a, cycles=1 },
 
-        IAP={ num=0x09, cycles=3 },
+        RFI={ num=0x09, cycles=3 },
         IAQ={ num=0x0a, cycles=2 },
 
         HWN={ num=0x10, cycles=2 },

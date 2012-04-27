@@ -343,14 +343,15 @@ X10C_ISN_HANDLER(IAS)
 	vcpu->sr.ia = *a;
 }
 
-// if IA is 0, does nothing, otherwise pushes IA to the stack, then sets IA to a
-X10C_ISN_HANDLER(IAP)
+// disables interrupt queueing, pops A from the stack, then pops PC from the stack
+X10C_ISN_HANDLER(RFI)
 {
-	if (vcpu->sr.ia) {
-		uint16_t A = *a;
-		vcpu->ram [ --vcpu->sr.sp ] = vcpu->sr.ia;
-		vcpu->sr.ia = A;
-	}
+	/* TODO: interrupt queue stuff */
+
+	*a          = vcpu->ram [ vcpu->sr.sp++ ];
+	vcpu->sr.pc = vcpu->ram [ vcpu->sr.sp++ ];
+
+	return 0;
 }
 
 // if a is nonzero, interrupts will be added to the queue instead of triggered.

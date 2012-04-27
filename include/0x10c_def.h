@@ -48,7 +48,7 @@ typedef uint16_t x10c_word;
 #define X10C_XOP_INT      0x08  /* triggers a software interrupt with message a */
 #define X10C_XOP_IAG      0x09  /* sets a to IA */
 #define X10C_XOP_IAS      0x0a  /* sets IA to a */
-#define X10C_XOP_IAP      0x0b  /* if IA is 0, does nothing, otherwise pushes IA to the stack, then sets IA to a */
+#define X10C_XOP_RFI      0x0b  /* disables interrupt queueing, pops A from the stack, then pops PC from the stack */
 #define X10C_XOP_IAQ      0x0c  /* if a is nonzero, interrupts will be added to the queue instead of triggered. if a is zero, interrupts will be triggered as normal again */
 #define X10C_XOP_HWN      0x10  /* sets a to number of connected hardware devices */
 #define X10C_XOP_HWQ      0x11  /* sets A, B, C, X, Y registers to information about hardware a A+(B<<16) is a 32 bit word identifying the hardware id C is the hardware version X+(Y<<16) is a 32 bit word identifying the manufacturer */
