@@ -3,8 +3,8 @@ SRCS   = 0x10c_isn.c 0x10c_parser.c 0x10c_generator.c 0x10c_exec.c 0x10c_vcpu.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
-LUA_PKGS   = lua5.1 lua5.1-lpeg
-LUA_CFLAGS = $(shell pkg-config --cflags ${LUA_PKGS})
+#LUA_PKGS   = lua5.1 lua5.1-lpeg
+#LUA_CFLAGS = $(shell pkg-config --cflags ${LUA_PKGS})
 
 INCLUDES = ../include
 

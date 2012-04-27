@@ -47,8 +47,6 @@ struct x10c_parser {
 	const char *file;
 	unsigned line;
 
-	struct lua_State *L;
-
 	struct x10c_parser_ops ops;
 };
 

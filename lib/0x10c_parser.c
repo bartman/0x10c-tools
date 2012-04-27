@@ -9,11 +9,6 @@
 #include "0x10c_isn.h"
 #include "0x10c_util.h"
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-
-
 #if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
 #else
@@ -220,20 +215,6 @@ struct x10c_parser * x10c_parser_new(const char *file,
 	}
 
 	pr->ops = x10c_parser_ops;
-
-	pr->L = luaL_newstate();
-	luaL_openlibs(pr->L);
-	rc = luaL_dostring(pr->L,
-			"package.path = './lua/?.lua;' .. package.path\n"
-			"require 'dumper'\n"
-			"local lpeg = require 'lpeg'\n"
-			"local D = require 'dcpu16.parser'\n"
-			"dp = D.new()\n"
-			"print 'lua interpreter loaded'\n");
-	if (rc) {
-		fprintf(stderr, "lua error: %s\n", lua_tostring(pr->L, -1));
-		lua_pop(pr->L, 1);  /* pop error message from the stack */
-	}
 
 	return pr;
 }
