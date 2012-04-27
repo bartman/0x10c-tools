@@ -185,9 +185,7 @@ X10C_ISN_HANDLER(SHL)
 	uint16_t A = *a;
 	uint32_t B = *b;
 
-	B << A;
-
-	*b = B;
+	*b = B << A;
 	vcpu->st.sr.ex = B>>16;
 
 	return 0;
