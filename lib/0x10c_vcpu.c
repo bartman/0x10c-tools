@@ -23,43 +23,43 @@ static x10c_word * x10c_vcpu_get_isn_arg(struct x10c_vcpu *vcpu,
 	switch(arg_desc) {
 	case X10C_REG_A ... X10C_REG_J:
 		/* 0x00-0x07: register (A, B, C, X, Y, Z, I or J, in that order) */
-		return &vcpu->gr.n[arg_desc];
+		return &vcpu->st.gr.n[arg_desc];
 
 	case X10C_ARG_MREF_REG(A) ... X10C_ARG_MREF_REG(J):
 		/* 0x08-0x0f: [register] */
-		ofs = vcpu->gr.n[arg_desc - X10C_ARG_MREF_REG_BASE];
+		ofs = vcpu->st.gr.n[arg_desc - X10C_ARG_MREF_REG_BASE];
 		return vcpu->ram + ofs;
 
 	case X10C_ARG_MREF_OFS_REG(A) ... X10C_ARG_MREF_OFS_REG(J):
 		/* 0x10-0x17: [next word + register] */
-		ofs = vcpu->gr.n[arg_desc - X10C_ARG_MREF_OFS_REG_BASE];
+		ofs = vcpu->st.gr.n[arg_desc - X10C_ARG_MREF_OFS_REG_BASE];
 		ofs += x10c_vcpu_advance_pc_word(vcpu);
 		return vcpu->ram + ofs;
 
 	case X10C_REG_PUSH_POP:
 		if (is_b) {
 			// this is a push
-			ofs = -- vcpu->sr.sp;
+			ofs = -- vcpu->st.sr.sp;
 			return vcpu->ram + ofs;
 		} else {
 			// this is a pop
-			ofs = vcpu->sr.sp ++;
+			ofs = vcpu->st.sr.sp ++;
 			return vcpu->ram + ofs;
 		}
 
 	case X10C_REG_PEEK:
-		ofs = vcpu->sr.sp;
+		ofs = vcpu->st.sr.sp;
 		return vcpu->ram + ofs;
 
 	case X10C_REG_PICK:
 		die("PICK not yet implemented");
-		ofs = vcpu->sr.sp;
+		ofs = vcpu->st.sr.sp;
 		return vcpu->ram + ofs;
 
 	case X10C_REG_SP:
 	case X10C_REG_PC:
 	case X10C_REG_EX:
-		return &vcpu->sr.n[arg_desc - X10C_REG_SP];
+		return &vcpu->st.sr.n[arg_desc - X10C_REG_SP];
 
 	case X10C_MREF_NEXT_WORD:
 		ofs = x10c_vcpu_advance_pc_word(vcpu);
@@ -89,10 +89,10 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 	if (!isn)
 		die("not a valid instruction 0x%04x", op->word[0]);
 
-	dbg("# step pc=%04x %s\n", vcpu->sr.pc, isn->op_name);
+	dbg("# step pc=%04x %s\n", vcpu->st.sr.pc, isn->op_name);
 
 	// consume this word
-	vcpu->sr.pc ++;
+	vcpu->st.sr.pc ++;
 
 	if (x10c_op_is_basic(op)) {
 		a = x10c_vcpu_get_isn_arg(vcpu, op->b.a, &tmp_a, 0);
@@ -102,12 +102,14 @@ static int x10c_vcpu_step (struct x10c_vcpu *vcpu)
 		b = NULL;
 	}
 
-	if (!vcpu->skip_next_op) {
+	if (!vcpu->st.skipping) {
 		rc = isn->ops.execute(isn, op, a, b, vcpu);
 		if (rc<0)
 			return rc;
-	} else {
-		vcpu->skip_next_op = 0;
+
+	} else if (!isn->is_conditional) {
+		// this was the last one we're gonna skip
+		vcpu->st.skipping = 0;
 	}
 
 
@@ -124,7 +126,7 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 	for(;;) {
 		x10c_word old_pc;
 
-		old_pc = vcpu->sr.pc;
+		old_pc = vcpu->st.sr.pc;
 
 		rc = vcpu->ops.step(vcpu);
 		if (rc<0)
@@ -132,7 +134,7 @@ static int x10c_vcpu_run (struct x10c_vcpu *vcpu)
 
 		vcpu->ops.dump(vcpu, stdout);
 
-		if (old_pc == vcpu->sr.pc)
+		if (old_pc == vcpu->st.sr.pc)
 			return -EINTR;
 	}
 }
@@ -153,12 +155,12 @@ static void x10c_vcpu_dump(struct x10c_vcpu *vcpu, FILE *out)
 				x10c_vcpu_current_op(vcpu));
 
 		fprintf(out, DUMP_FMT,
-				vcpu->gr.a, vcpu->gr.b, vcpu->gr.c,
-				vcpu->gr.x, vcpu->gr.y, vcpu->gr.z,
-				vcpu->gr.i, vcpu->gr.j,
-				vcpu->sr.pc, vcpu->sr.sp,
-				vcpu->sr.ex, vcpu->sr.ia,
-				vcpu->skip_next_op ? "sk" : "  ",
+				vcpu->st.gr.a, vcpu->st.gr.b, vcpu->st.gr.c,
+				vcpu->st.gr.x, vcpu->st.gr.y, vcpu->st.gr.z,
+				vcpu->st.gr.i, vcpu->st.gr.j,
+				vcpu->st.sr.pc, vcpu->st.sr.sp,
+				vcpu->st.sr.ex, vcpu->st.sr.ia,
+				vcpu->st.skip_next_op ? "sk" : "  ",
 				hex_buf, asm_buf);
 	} else
 		fprintf(out, DUMP_HDR);

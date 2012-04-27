@@ -22,7 +22,7 @@ X10C_ISN_HANDLER(ADD)
 	uint32_t sum = B + A;
 
 	*b = sum;
-	vcpu->sr.ex = sum >> 16;
+	vcpu->st.sr.ex = sum >> 16;
 
 	return 0;
 }
@@ -35,7 +35,7 @@ X10C_ISN_HANDLER(SUB)
 	uint32_t diff = B - A;
 
 	*b = diff;
-	vcpu->sr.ex = diff >> 16;
+	vcpu->st.sr.ex = diff >> 16;
 
 	return 0;
 }
@@ -48,7 +48,7 @@ X10C_ISN_HANDLER(MUL)
 	uint32_t prod = B * A;
 
 	*b = prod;
-	vcpu->sr.ex = prod >> 16;
+	vcpu->st.sr.ex = prod >> 16;
 
 	return 0;
 }
@@ -61,7 +61,7 @@ X10C_ISN_HANDLER(MLI)
 	uint32_t prod = B * A;
 
 	*b = prod;
-	vcpu->sr.ex = prod >> 16;
+	vcpu->st.sr.ex = prod >> 16;
 
 	return 0;
 }
@@ -74,11 +74,11 @@ X10C_ISN_HANDLER(DIV)
 
 	if (A) {
 		*b = B / A;
-		vcpu->sr.ex = (B<<16) / A;
+		vcpu->st.sr.ex = (B<<16) / A;
 
 	} else {
 		*b = 0;
-		vcpu->sr.ex = 0;
+		vcpu->st.sr.ex = 0;
 	}
 
 	return 0;
@@ -92,11 +92,11 @@ X10C_ISN_HANDLER(DVI)
 
 	if (A) {
 		*b = B / A;
-		vcpu->sr.ex = (B<<16) / A;
+		vcpu->st.sr.ex = (B<<16) / A;
 
 	} else {
 		*b = 0;
-		vcpu->sr.ex = 0;
+		vcpu->st.sr.ex = 0;
 	}
 
 	return 0;
@@ -162,7 +162,7 @@ X10C_ISN_HANDLER(SHR)
 	uint32_t B = *b;
 
 	*b = B >> A;
-	vcpu->sr.ex = (B<<16) >> A;
+	vcpu->st.sr.ex = (B<<16) >> A;
 
 	return 0;
 }
@@ -174,7 +174,7 @@ X10C_ISN_HANDLER(ASR)
 	int32_t B = *b;
 
 	*b = B >> A;
-	vcpu->sr.ex = (B<<16) >> A;
+	vcpu->st.sr.ex = (B<<16) >> A;
 
 	return 0;
 }
@@ -188,7 +188,7 @@ X10C_ISN_HANDLER(SHL)
 	B << A;
 
 	*b = B;
-	vcpu->sr.ex = B>>16;
+	vcpu->st.sr.ex = B>>16;
 
 	return 0;
 }
@@ -196,7 +196,7 @@ X10C_ISN_HANDLER(SHL)
 // performs next instruction only if (b&a)!=0
 X10C_ISN_HANDLER(IFB)
 {
-	vcpu->skip_next_op = !( *b & *a );
+	vcpu->st.skipping = !( *b & *a );
 
 	return 0;
 }
@@ -204,7 +204,7 @@ X10C_ISN_HANDLER(IFB)
 // performs next instruction only if (b&a)==0
 X10C_ISN_HANDLER(IFC)
 {
-	vcpu->skip_next_op = !!( *b & *a );
+	vcpu->st.skipping = !!( *b & *a );
 
 	return 0;
 }
@@ -212,7 +212,7 @@ X10C_ISN_HANDLER(IFC)
 // performs next instruction only if b==a
 X10C_ISN_HANDLER(IFE)
 {
-	vcpu->skip_next_op = !( *b == *a );
+	vcpu->st.skipping = !( *b == *a );
 
 	return 0;
 }
@@ -220,7 +220,7 @@ X10C_ISN_HANDLER(IFE)
 // performs next instruction only if b!=a
 X10C_ISN_HANDLER(IFN)
 {
-	vcpu->skip_next_op = !( *b != *a );
+	vcpu->st.skipping = !( *b != *a );
 
 	return 0;
 }
@@ -228,7 +228,7 @@ X10C_ISN_HANDLER(IFN)
 // performs next instruction only if b>a
 X10C_ISN_HANDLER(IFG)
 {
-	vcpu->skip_next_op = !( *b > *a );
+	vcpu->st.skipping = !( *b > *a );
 
 	return 0;
 }
@@ -236,7 +236,7 @@ X10C_ISN_HANDLER(IFG)
 // performs next instruction only if b>a (signed)
 X10C_ISN_HANDLER(IFA)
 {
-	vcpu->skip_next_op = !( (int16_t)*b > (int16_t)*a );
+	vcpu->st.skipping = !( (int16_t)*b > (int16_t)*a );
 
 	return 0;
 }
@@ -244,7 +244,7 @@ X10C_ISN_HANDLER(IFA)
 // performs next instruction only if b<a
 X10C_ISN_HANDLER(IFL)
 {
-	vcpu->skip_next_op = !( *b < *a );
+	vcpu->st.skipping = !( *b < *a );
 
 	return 0;
 }
@@ -252,7 +252,7 @@ X10C_ISN_HANDLER(IFL)
 // performs next instruction only if b<a (signed)
 X10C_ISN_HANDLER(IFU)
 {
-	vcpu->skip_next_op = !( (int16_t)*b < (int16_t)*a );
+	vcpu->st.skipping = !( (int16_t)*b < (int16_t)*a );
 
 	return 0;
 }
@@ -262,11 +262,11 @@ X10C_ISN_HANDLER(ADX)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
-	uint32_t EX = vcpu->sr.ex;
+	uint32_t EX = vcpu->st.sr.ex;
 	uint32_t sum = B + A + EX;
 
 	*b = sum;
-	vcpu->sr.ex = (sum >> 16) ? 1 : 0;
+	vcpu->st.sr.ex = (sum >> 16) ? 1 : 0;
 
 	return 0;
 }
@@ -276,11 +276,11 @@ X10C_ISN_HANDLER(SBX)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
-	uint32_t EX = vcpu->sr.ex;
+	uint32_t EX = vcpu->st.sr.ex;
 	uint32_t diff = B - A + EX;
 
 	*b = diff;
-	vcpu->sr.ex = (diff >> 16) ? 0xFFFF : 0;
+	vcpu->st.sr.ex = (diff >> 16) ? 0xFFFF : 0;
 
 	return 0;
 }
@@ -290,8 +290,8 @@ X10C_ISN_HANDLER(STI)
 {
 	*b = *a;
 
-	vcpu->gr.i ++;
-	vcpu->gr.j ++;
+	vcpu->st.gr.i ++;
+	vcpu->st.gr.j ++;
 
 	return 0;
 }
@@ -301,8 +301,8 @@ X10C_ISN_HANDLER(STD)
 {
 	*b = *a;
 
-	vcpu->gr.i --;
-	vcpu->gr.j --;
+	vcpu->st.gr.i --;
+	vcpu->st.gr.j --;
 
 	return 0;
 }
@@ -312,10 +312,10 @@ X10C_ISN_HANDLER(STD)
 X10C_ISN_HANDLER(JSR)
 {
 	/* push address of next instruction onto the stack */
-	vcpu->ram [ --vcpu->sr.sp ] = vcpu->sr.pc;
+	vcpu->ram [ --vcpu->st.sr.sp ] = vcpu->st.sr.pc;
 
 	/* set the program counter to a */
-	vcpu->sr.pc = *a;
+	vcpu->st.sr.pc = *a;
 
 	return 0;
 }
@@ -334,13 +334,13 @@ X10C_ISN_HANDLER(INT)
 // sets a to IA
 X10C_ISN_HANDLER(IAG)
 {
-	*a = vcpu->sr.ia;
+	*a = vcpu->st.sr.ia;
 }
 
 // sets IA to a
 X10C_ISN_HANDLER(IAS)
 {
-	vcpu->sr.ia = *a;
+	vcpu->st.sr.ia = *a;
 }
 
 // disables interrupt queueing, pops A from the stack, then pops PC from the stack
@@ -348,8 +348,8 @@ X10C_ISN_HANDLER(RFI)
 {
 	/* TODO: interrupt queue stuff */
 
-	*a          = vcpu->ram [ vcpu->sr.sp++ ];
-	vcpu->sr.pc = vcpu->ram [ vcpu->sr.sp++ ];
+	*a             = vcpu->ram [ vcpu->st.sr.sp++ ];
+	vcpu->st.sr.pc = vcpu->ram [ vcpu->st.sr.sp++ ];
 
 	return 0;
 }

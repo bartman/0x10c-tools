@@ -42,7 +42,8 @@ struct x10c_isn {
 	const char op_name[X10C_OP_NAME_MAX];
 	uint8_t    op_code;
 	uint8_t    ext_op_code;
-	uint8_t    num_args;
+	uint8_t    cycles;
+	uint8_t    is_conditional:1;
 
 	struct x10c_isn_ops ops;
 };
