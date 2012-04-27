@@ -21,13 +21,13 @@ typedef uint16_t x10c_word;
 #define X10C_OP_DIV       0x06  /* sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned) */
 #define X10C_OP_DVI       0x07  /* like DIV, but treat b, a as signed */
 #define X10C_OP_MOD       0x08  /* sets b to b%a. if a==0, sets b to 0 instead. */
-#define X10C_OP_AND       0x09  /* sets b to b&a */
-#define X10C_OP_BOR       0x0a  /* sets b to b|a */
-#define X10C_OP_XOR       0x0b  /* sets b to b^a */
-#define X10C_OP_SHR       0x0c  /* sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff (logical shift) */
-#define X10C_OP_ASR       0x0d  /* sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed) */
-#define X10C_OP_SHL       0x0e  /* sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff */
-#define X10C_OP_STI       0x0f  /* sets b to a, then increases I and J by 1 */
+#define X10C_OP_MDI       0x09  /* like MOD, but treat b, a as signed. Rounds towards 0 */
+#define X10C_OP_AND       0x0a  /* sets b to b&a */
+#define X10C_OP_BOR       0x0b  /* sets b to b|a */
+#define X10C_OP_XOR       0x0c  /* sets b to b^a */
+#define X10C_OP_SHR       0x0d  /* sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff (logical shift) */
+#define X10C_OP_ASR       0x0e  /* sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed) */
+#define X10C_OP_SHL       0x0f  /* sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff */
 #define X10C_OP_IFB       0x10  /* performs next instruction only if (b&a)!=0 */
 #define X10C_OP_IFC       0x11  /* performs next instruction only if (b&a)==0 */
 #define X10C_OP_IFE       0x12  /* performs next instruction only if b==a */
@@ -38,6 +38,8 @@ typedef uint16_t x10c_word;
 #define X10C_OP_IFU       0x17  /* performs next instruction only if b<a (signed) */
 #define X10C_OP_ADX       0x1a  /* sets b to b+a+EX, sets EX to 0x0001 if there is an overflow, 0x0 otherwise */
 #define X10C_OP_SBX       0x1b  /* sets b to b-a+EX, sets EX to 0xFFFF if there is an underflow, 0x0 otherwise */
+#define X10C_OP_STI       0x1e  /* sets b to a, then increases I and J by 1 */
+#define X10C_OP_STD       0x1f  /* sets b to a, then decreases I and J by 1 */
 #define X10C_OP_MAX       0x20
 
 /* special instruction - see below */
@@ -46,9 +48,12 @@ typedef uint16_t x10c_word;
 #define X10C_XOP_INT      0x08  /* triggers a software interrupt with message a */
 #define X10C_XOP_IAG      0x09  /* sets a to IA */
 #define X10C_XOP_IAS      0x0a  /* sets IA to a */
+#define X10C_XOP_IAP      0x0b  /* if IA is 0, does nothing, otherwise pushes IA to the stack, then sets IA to a */
+#define X10C_XOP_IAQ      0x0c  /* if a is nonzero, interrupts will be added to the queue instead of triggered. if a is zero, interrupts will be triggered as normal again */
 #define X10C_XOP_HWN      0x10  /* sets a to number of connected hardware devices */
 #define X10C_XOP_HWQ      0x11  /* sets A, B, C, X, Y registers to information about hardware a A+(B<<16) is a 32 bit word identifying the hardware id C is the hardware version X+(Y<<16) is a 32 bit word identifying the manufacturer */
 #define X10C_XOP_HWI      0x12  /* sends an interrupt to hardware a */
+
 #define X10C_XOP_MAX      0x20
 
 /* opcode arguments */

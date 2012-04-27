@@ -2,6 +2,8 @@
 #define __included_0x10c_util_h__
 
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include "0x10c_def.h"
 
 #define __stringify_1(x...)     #x

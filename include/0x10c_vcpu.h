@@ -28,9 +28,9 @@ struct x10c_vcpu {
 		};
 	} gr;
 	union {
-		x10c_word n[3];
+		x10c_word n[4];
 		struct {
-			x10c_word sp, pc, ex;
+			x10c_word sp, pc, ex, ia;
 		};
 	} sr;
 
