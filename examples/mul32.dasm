@@ -1,0 +1,19 @@
+; (ho:lo) := (ho:lo)*(hi:li)
+; uses 1 word of stack temporarily
+#macro MUL32(ho, lo, hi, li) {
+    SET PUSH, lo  ;    tmp =    lo
+    MUL PEEK, hi  ;    tmp = hi*lo
+    MUL ho, li    ; ho_out = li*ho
+    MUL lo, li    ; lo_out = lo*li
+    ADX ho, POP   ; ho_out = ex_lo*li + li*ho + hi*lo
+}
+
+; (ho:lo) := (ho:lo)*(hi:li)
+; tmp is destroyed
+#macro MUL32_TMP(ho, lo, hi, li, tmp) {
+    SET tmp, lo   ;    tmp =    lo
+    MUL tmp, hi   ;    tmp = hi*lo
+    MUL ho, li    ; ho_out = li*ho
+    MUL lo, li    ; lo_out = lo*li
+    ADX ho, tmp   ; ho_out = ex_lo*li + li*ho + hi*lo
+}
