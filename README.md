@@ -4,6 +4,8 @@ This is my attempt at DCPU-16 assembler, disassembler, and emulator.
 
 The implementation is a mix of lua and C.
 
+Now support DCPU-16 specification v1.5.
+
 # Prerequisites
 
 The assembler uses lpeg (lua implementation of PEG) to parse the input file.  The following are a minimum requirement
