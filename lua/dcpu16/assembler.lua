@@ -103,8 +103,8 @@ function DA.new()
                         dbg(3,"", "num", arg.num)
 
                         local n = tonumber(arg.num)
-                        if AorB == 'a' and n >= 0 and n < 0x20 then
-                                num = n + 0x20
+                        if AorB == 'a' and n >= -1 and n <= 0x1e then
+                                num = n + 0x21
                         else
                                 num = 0x1f
                                 s:mem_append(n)

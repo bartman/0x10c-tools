@@ -70,7 +70,7 @@ static x10c_word * x10c_vcpu_get_isn_arg(struct x10c_vcpu *vcpu,
 		return scratch;
 
 	default:
-		*scratch = arg_desc - X10C_ARG_LITERAL_BASE;
+		*scratch = arg_desc - X10C_ARG_LITERAL_BASE - 1;
 		return scratch;
 	}
 }

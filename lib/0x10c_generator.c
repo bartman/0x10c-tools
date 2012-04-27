@@ -62,7 +62,8 @@ char * x10c_append_arg(char *p, char *e, const char *prefix, x10c_word arg_desc,
 
 	default:
 		/* 0x20-0x3f: literal value 0x00-0x1f (literal) */
-		append("%s0x%04x", prefix, arg_desc - X10C_ARG_LITERAL_BASE);
+		append("%s0x%04hx", prefix,
+				(uint16_t)(arg_desc-X10C_ARG_LITERAL_BASE-1));
 		return p;
 	}
 
