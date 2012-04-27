@@ -65,7 +65,7 @@ parse_args(arg, option_handlers, long_options)
 
 if program == nil and infile ~= nil then
         local f = assert(io.open(infile))
-        local program = f:read'*all'
+        program = f:read'*all'
         f:close()
 elseif program ~= nil and infile == nil then
         -- nothing, continue
@@ -74,7 +74,7 @@ else
 end
 
 local d = DP.new()
-local res, suc, msg = d:newparse(program, arg[1])
+local res, suc, msg = d:newparse(program, infile)
 dump(res, '"'..program..'"  =>  ')
 if msg then print("\n"..msg.."\n") end
 if not suc then os.exit(1) end
