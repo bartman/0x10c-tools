@@ -237,6 +237,7 @@ function DP.new()
                         if b.var then
                                 table.insert(m.vars, b.var)
                         elseif b.op then
+                                b.program = parsing_file
                                 b.line = ct_line
                                 table.insert(m.code, b)
                         elseif b[1] == 'macro_end' then
@@ -338,7 +339,10 @@ function DP.new()
                         return a
                 end
 
-                if not b.line then b.line = ct_line end
+                if not b.line then
+                        b.program = parsing_file
+                        b.line = ct_line
+                end
 
                 if type(a) ~= 'table' then
                         -- this is the start token
