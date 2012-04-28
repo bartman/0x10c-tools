@@ -27,7 +27,7 @@ struct dcpu_vcpu_ops {
 
 struct dcpu_vcpu {
 	struct dcpu_vcpu_state {
-		uint64_t cycles;
+		dcpu_cycles_t cycles;
 
 		union {
 			dcpu_word n[DCPU_NUM_REGS];
@@ -49,6 +49,8 @@ struct dcpu_vcpu {
 
 	DECLARE_DCPU_FIFO(interrupts, DCPU_MAX_INT_QUEUED);
 
+	uint32_t    hz; // clock cycles / second
+
 	dcpu_word   hw_count;
 	struct list hw_list;
 
@@ -59,6 +61,10 @@ struct dcpu_vcpu {
 
 // create a new vcpu
 extern struct dcpu_vcpu * dcpu_vcpu_new(void);
+
+#define dcpu_vcpu_cycles(vcpu)  ((vcpu)->st.cycles)
+#define dcpu_vcpu_gr(vcpu,name) ((vcpu)->st.gr.name)
+#define dcpu_vcpu_sr(vcpu,name) ((vcpu)->st.sr.name)
 
 // accept an interrupt
 static inline void dcpu_vcpu_accept_interrupt(struct dcpu_vcpu *vcpu,
@@ -96,7 +102,7 @@ static inline dcpu_word dcpu_vcpu_pop(struct dcpu_vcpu *vcpu)
 	return vcpu->ram [ vcpu->st.sr.sp++ ];
 }
 
-// add and remove a piece of hardware
+// add and remove a piece of hardware (return 0 on success)
 extern int dcpu_vcpu_register_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw);
 extern int dcpu_vcpu_unregister_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw);
 

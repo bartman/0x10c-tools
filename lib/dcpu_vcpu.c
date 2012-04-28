@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #include "dcpu_vcpu.h"
+#include "dcpu_def.h"
 #include "dcpu_hw.h"
 #include "dcpu_isn.h"
 #include "dcpu_util.h"
@@ -240,6 +241,8 @@ struct dcpu_vcpu * dcpu_vcpu_new(void)
 
 	dcpu_fifo_init(&vcpu->interrupts, DCPU_MAX_INT_QUEUED);
 
+	vcpu->hz = DCPU_HZ;
+
 	vcpu->hw_count;
 	list_init(&vcpu->hw_list);
 
@@ -279,12 +282,19 @@ int dcpu_vcpu_unregister_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw)
 	if (!hw->link.next)
 		return -EFAULT;
 
+	// maybe not ours?
+	if (hw->vcpu != vcpu)
+		return -ENXIO;
+
 	// detach
 	vcpu->hw_count --;
 	list_del(&hw->link);
 
 	// reset id
 	hw->hw_id = -1;
+
+	// detach
+	hw->vcpu = NULL;
 
 	if (!hw->ops.delete)
 		return -EFAULT;

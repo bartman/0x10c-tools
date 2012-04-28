@@ -8,6 +8,7 @@
 #include "dcpu_vcpu.h"
 #include "dcpu_parser.h"
 #include "dcpu_util.h"
+#include "dcpu_clock.h"
 
 int main(int argc, char *argv[])
 {
@@ -29,6 +30,8 @@ int main(int argc, char *argv[])
 	pr->ops.dump(pr, stdout);
 
 	pr->ops.delete(pr);
+
+	dcpu_add_clock(vcpu);
 
 	vcpu->ops.run(vcpu);
 

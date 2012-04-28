@@ -1,5 +1,6 @@
 TARGET = libdcpu.a
-SRCS   = dcpu_isn.c dcpu_parser.c dcpu_generator.c dcpu_exec.c dcpu_vcpu.c
+SRCS   = dcpu_isn.c dcpu_parser.c dcpu_generator.c dcpu_exec.c dcpu_vcpu.c \
+	 dcpu_clock.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
