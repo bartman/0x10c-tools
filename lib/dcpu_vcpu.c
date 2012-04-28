@@ -114,6 +114,8 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 		rc = isn->ops.execute(isn, op, a, b, vcpu);
 		if (rc<0)
 			return rc;
+		if (rc>0)
+			vcpu->st.cycles += rc;
 
 	} else if (!isn->is_conditional) {
 		// this was the last one we're gonna skip
