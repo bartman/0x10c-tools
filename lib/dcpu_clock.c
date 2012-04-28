@@ -13,6 +13,12 @@ struct dcpu_clock * dcpu_clock_new(void)
 
 	clock = calloc(1, sizeof(*clock));
 
+	dcpu_hw_init(&clock->hw);
+
+	clock->hw.hw_version   = DCPU_CLOCK_VERSION;
+	clock->hw.hw_vendor_id = DCPU_CLOCK_VENDOR_ID;
+	clock->hw.hw_device_id = DCPU_CLOCK_DEVICE_ID;
+
 	clock->cycles_per_tick = 0;
 	clock->int_message = 0;
 	clock->ticks = 0;
