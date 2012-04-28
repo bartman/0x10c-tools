@@ -5,6 +5,7 @@
 #include "dcpu_vcpu.h"
 #include "dcpu_util.h"
 #include "dcpu_fifo.h"
+#include "dcpu_hw.h"
 
 DCPU_ISN_HANDLER(SET)
 {
@@ -382,7 +383,16 @@ DCPU_ISN_HANDLER(HWQ)
 // sends an interrupt to hardware a
 DCPU_ISN_HANDLER(HWI)
 {
-	die("no HWI");
+	dcpu_word hw_id;
+	struct dcpu_hw *hw;
+	int rc;
+
+	hw_id = *a;
+	hw = dcpu_vcpu_find_hw(vcpu, hw_id);
+	if (hw)
+		return hw->ops.handle_interrupt(hw);
+
+	return 0;
 }
 
 
