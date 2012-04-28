@@ -11,7 +11,7 @@ typedef uint16_t dcpu_word;
 #define DCPU_RAM_WORDS 0x10000
 #define DCPU_MAX_OP_LEN 3
 
-#define DCPU_HZ 10000000 // 10 MHz
+#define DCPU_HZ 100000 // 100 kHz
 typedef uint64_t dcpu_cycles_t;
 
 #define DCPU_MAX_INT_QUEUED 256
