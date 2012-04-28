@@ -368,7 +368,9 @@ DCPU_ISN_HANDLER(IAQ)
 // sets a to number of connected hardware devices
 DCPU_ISN_HANDLER(HWN)
 {
-	die("no HWN");
+	*a = vcpu->hw_count;
+
+	return 0;
 }
 
 // sets A, B, C, X, Y registers to information about hardware a
