@@ -1,10 +1,11 @@
 *~
 .*.sw[po]
 *.o
+*.out
 *.a
 .*.dep
 tags
 cscope.files
 cscope.out
 Makefile.conf
-src/0x10c
+src/dcpu
