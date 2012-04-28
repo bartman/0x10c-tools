@@ -322,6 +322,7 @@ DCPU_ISN_HANDLER(JSR)
 
 DCPU_ISN_HANDLER(HCF)
 {
+	warn("HCF reached");
 	return -EFAULT;
 }
 

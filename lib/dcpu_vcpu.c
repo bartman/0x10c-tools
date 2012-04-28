@@ -183,8 +183,10 @@ static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
 		dcpu_vcpu_poke_hardware(vcpu);
 
 		// if there is no hardware, and the PC didn't change, there is no hope
-		if (prev_st.sr.pc == vcpu->st.sr.pc && vcpu->hw_count)
+		if (prev_st.sr.pc == vcpu->st.sr.pc && !vcpu->hw_count) {
+			warn("PC didn't change, bailing out.");
 			return -ENODEV;
+		}
 	}
 }
 
