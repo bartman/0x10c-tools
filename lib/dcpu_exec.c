@@ -386,11 +386,17 @@ DCPU_ISN_HANDLER(HWQ)
 	hw_id = *a;
 	hw = dcpu_vcpu_find_hw(vcpu, hw_id);
 	if (hw) {
-		dcpu_vcpu_gr(vcpu,a) = hw->hw_device_id;
-		dcpu_vcpu_gr(vcpu,b) = hw->hw_device_id >> 16;
-		dcpu_vcpu_gr(vcpu,c) = hw->hw_version;
-		dcpu_vcpu_gr(vcpu,x) = hw->hw_vendor_id;
-		dcpu_vcpu_gr(vcpu,y) = hw->hw_vendor_id >> 16;
+		dcpu_vcpu_gr(vcpu)->a = hw->hw_device_id;
+		dcpu_vcpu_gr(vcpu)->b = hw->hw_device_id >> 16;
+		dcpu_vcpu_gr(vcpu)->c = hw->hw_version;
+		dcpu_vcpu_gr(vcpu)->x = hw->hw_vendor_id;
+		dcpu_vcpu_gr(vcpu)->y = hw->hw_vendor_id >> 16;
+	} else {
+		dcpu_vcpu_gr(vcpu)->a = -1;
+		dcpu_vcpu_gr(vcpu)->b = -1;
+		dcpu_vcpu_gr(vcpu)->c = -1;
+		dcpu_vcpu_gr(vcpu)->x = -1;
+		dcpu_vcpu_gr(vcpu)->y = -1;
 	}
 
 	return 0;

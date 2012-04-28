@@ -63,8 +63,8 @@ struct dcpu_vcpu {
 extern struct dcpu_vcpu * dcpu_vcpu_new(void);
 
 #define dcpu_vcpu_cycles(vcpu)  ((vcpu)->st.cycles)
-#define dcpu_vcpu_gr(vcpu,name) ((vcpu)->st.gr.name)
-#define dcpu_vcpu_sr(vcpu,name) ((vcpu)->st.sr.name)
+#define dcpu_vcpu_gr(vcpu)      (&(vcpu)->st.gr)
+#define dcpu_vcpu_sr(vcpu)      (&(vcpu)->st.sr)
 
 // accept an interrupt
 static inline void dcpu_vcpu_accept_interrupt(struct dcpu_vcpu *vcpu,

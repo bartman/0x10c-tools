@@ -81,9 +81,9 @@ static int dcpu_clock_handle_interrupt (struct dcpu_hw *hw)
 	struct dcpu_vcpu *vcpu = clock->hw.vcpu;
 	dcpu_cycles_t b;
 
-	switch (dcpu_vcpu_gr(vcpu,a)) {
+	switch (dcpu_vcpu_gr(vcpu)->a) {
 	case DCPU_CLOCK_CMD_CONF:  // configure
-		b = dcpu_vcpu_gr(vcpu,b);
+		b = dcpu_vcpu_gr(vcpu)->b;
 
 		clock->last_conf_cycles = dcpu_vcpu_cycles(vcpu);
 
@@ -104,12 +104,12 @@ static int dcpu_clock_handle_interrupt (struct dcpu_hw *hw)
 
 	case DCPU_CLOCK_CMD_READ:  // read counter
 
-		dcpu_vcpu_gr(vcpu,c) = clock->ticks;
+		dcpu_vcpu_gr(vcpu)->c = clock->ticks;
 		break;
 
 	case DCPU_CLOCK_CMD_IE:  // interrupt enable
 
-		clock->int_message = dcpu_vcpu_gr(vcpu,b);
+		clock->int_message = dcpu_vcpu_gr(vcpu)->b;
 		break;
 
 	default:
