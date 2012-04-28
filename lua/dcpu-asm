@@ -32,7 +32,7 @@ local function parse_file(program, infile)
 
         local res, suc, msg = d:newparse(program, infile or 'stdin')
 
-        if msg then print("\n"..msg.."\n") end
+        if msg then io.stderr:write("\n"..msg.."\n") end
         if not suc then os.exit(1) end
 
         return res

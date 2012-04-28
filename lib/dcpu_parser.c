@@ -95,12 +95,9 @@ static int dcpu_parser_parse_file(struct dcpu_parser *pr, const char *filename)
 		list_add_tail(&pl->link, &pr->parsed_lines);
 	}
 
-	rc = 0;
 bail:
 
-	pclose(in);
-
-	return 0;
+	return pclose(in);
 }
 
 static int dcpu_parser_parse_block(struct dcpu_parser *pr, const char *block)
