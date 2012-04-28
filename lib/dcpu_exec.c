@@ -322,7 +322,7 @@ DCPU_ISN_HANDLER(JSR)
 
 DCPU_ISN_HANDLER(HCF)
 {
-	die("halt and catch fire, now");
+	return -EFAULT;
 }
 
 // triggers a software interrupt with message a

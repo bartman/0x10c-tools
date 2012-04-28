@@ -33,8 +33,6 @@ int main(int argc, char *argv[])
 
 	dcpu_add_clock(vcpu);
 
-	vcpu->ops.run(vcpu);
-
-	return 0;
+	return vcpu->ops.run(vcpu);
 }
 
