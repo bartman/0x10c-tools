@@ -1,3 +1,6 @@
+        ; set the interrupt handler, and disable queueing
+        IAS handler
+        IAQ 0
 
         ; enumerate all devices
         HWN Z
@@ -26,24 +29,48 @@
         SET B, 1
         HWI [clock_dev]
 
+        ; read the tick counter once
         SET A, 1
         HWI [clock_dev]
         SET B, C
 
+        ; now wait for the tick counter to advance once
 :wait_for_tick
         SET A, 1
         HWI [clock_dev]
         IFE B, C
           SET PC, wait_for_tick
+        
+        ; and finally enable interrupts
+        SET A, 2
+        SET B, 0x1234
+        HWI [clock_dev]
+
+        SET C, 0xFFFF         ; constrain the wait to 0xFFFF cycles
+:wait_for_int
+        SUB C, 1
+        IFE [int_msg], 0
+          IFG C, 0            ; timeout
+            SET PC, wait_for_int
+
+        ; pull out the results
+        SET I, [int_msg]
+        SET J, [int_cnt]
 
 :end    HCF 0
         SET PC, end
 
 
 :handler
-        SET B, 0x8000
-        ADD B, A
+        SET [int_msg], A
+        ADD [int_cnt], 1
         RFI 0
 
 :clock_dev
         dat 0xFFFF
+
+:int_msg
+        dat 0
+
+:int_cnt
+        dat 0
