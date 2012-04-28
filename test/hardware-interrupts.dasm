@@ -1,0 +1,49 @@
+
+        ; enumerate all devices
+        HWN Z
+
+:hw_enum_again
+        SUB Z, 1
+        IFN EX, 0
+          SET PC, hw_enum_done
+
+        HWQ Z
+
+        ; check if it's a clock
+        IFE A, 0xb402
+          IFE B, 0x12d0
+            SET [clock_dev], Z
+
+        SET PC, hw_enum_again
+:hw_enum_done
+
+        ; did we find a clock?
+        IFE [clock_dev], 0xFFFF
+          SET PC, end
+
+        ; configure the clock
+        SET A, 0
+        SET B, 1
+        HWI [clock_dev]
+
+        SET A, 1
+        HWI [clock_dev]
+        SET B, C
+
+:wait_for_tick
+        SET A, 1
+        HWI [clock_dev]
+        IFE B, C
+          SET PC, wait_for_tick
+
+:end    HCF 0
+        SET PC, end
+
+
+:handler
+        SET B, 0x8000
+        ADD B, A
+        RFI 0
+
+:clock_dev
+        dat 0xFFFF
