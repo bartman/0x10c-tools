@@ -1,15 +1,15 @@
-#ifndef __included_0x10c_util_h__
-#define __included_0x10c_util_h__
+#ifndef __included_dcpu_util_h__
+#define __included_dcpu_util_h__
 
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include "0x10c_def.h"
+#include "dcpu_def.h"
 
 #define __stringify_1(x...)     #x
 #define __stringify(x...)       __stringify_1(x)
 
-static inline void x10c_dump(FILE *out, x10c_word *data, unsigned count)
+static inline void dcpu_dump(FILE *out, dcpu_word *data, unsigned count)
 {
 	int i;
 
@@ -31,4 +31,4 @@ static inline void x10c_dump(FILE *out, x10c_word *data, unsigned count)
 		})
 
 
-#endif // __included_0x10c_util_h__
+#endif // __included_dcpu_util_h__

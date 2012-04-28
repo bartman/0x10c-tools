@@ -1,5 +1,5 @@
-#ifndef __included_0x10c_colours_h__
-#define __included_0x10c_colours_h__
+#ifndef __included_dcpu_colours_h__
+#define __included_dcpu_colours_h__
 
 #define RSTCLR  "\033[0m"  /* reset */
 
@@ -27,4 +27,4 @@
 
 
 
-#endif // __included_0x10c_colours_h__
+#endif // __included_dcpu_colours_h__

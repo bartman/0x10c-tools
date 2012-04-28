@@ -4,10 +4,10 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include "0x10c_parser.h"
-#include "0x10c_parser_lib.h"
-#include "0x10c_isn.h"
-#include "0x10c_util.h"
+#include "dcpu_parser.h"
+#include "dcpu_parser_lib.h"
+#include "dcpu_isn.h"
+#include "dcpu_util.h"
 
 #if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
@@ -18,16 +18,16 @@
 
 // ----- line parser code -----
 
-static struct x10c_parsed_line * x10c_parsed_line_new(void)
+static struct dcpu_parsed_line * dcpu_parsed_line_new(void)
 {
-	struct x10c_parsed_line *pl;
+	struct dcpu_parsed_line *pl;
 
 	pl = calloc(1, sizeof(*pl));
 
 	return pl;
 }
 
-static void x10c_parsed_line_delete(struct x10c_parsed_line *pl)
+static void dcpu_parsed_line_delete(struct dcpu_parsed_line *pl)
 {
 	free((char*)pl->file);
 	free(pl);
@@ -35,7 +35,7 @@ static void x10c_parsed_line_delete(struct x10c_parsed_line *pl)
 
 // ----- parser code -----
 
-static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
+static int dcpu_parser_parse_file(struct dcpu_parser *pr, const char *filename)
 {
 	int rc;
 	char buf[4096];
@@ -43,7 +43,7 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
 	int tmp;
 	char *tok_file, *tok_line, *tok_ofs, *tok_isn;
 	FILE *in;
-	struct x10c_parsed_line *pl;
+	struct dcpu_parsed_line *pl;
 
 	if (!filename)
 		return -EINVAL;
@@ -58,7 +58,7 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
 
 	while ( fgets(buf, sizeof(buf), in) ) {
 
-		pl = x10c_parsed_line_new();
+		pl = dcpu_parsed_line_new();
 
 		str = buf;
 		tok_file = strsep(&str, "\t");
@@ -88,7 +88,7 @@ static int x10c_parser_parse_file(struct x10c_parser *pr, const char *filename)
 			die("overflowed memory");
 
 		memcpy(pr->ram + pr->ram_used, pl->op.word,
-				pl->word_count * sizeof(x10c_word));
+				pl->word_count * sizeof(dcpu_word));
 
 		pr->ram_used += pl->word_count;
 
@@ -103,36 +103,36 @@ bail:
 	return 0;
 }
 
-static int x10c_parser_parse_block(struct x10c_parser *pr, const char *block)
+static int dcpu_parser_parse_block(struct dcpu_parser *pr, const char *block)
 {
 	// not implemented yet
 	return -EIO;
 }
 
-int x10c_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf)
+int dcpu_basic_parser(struct dcpu_parser *pr, const struct dcpu_isn *isn,
+		dcpu_op_t *op, char *buf)
 {
 	// not implemented yet
 	return -EIO;
 }
 
-int x10c_non_basic_parser(struct x10c_parser *pr, const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf)
+int dcpu_non_basic_parser(struct dcpu_parser *pr, const struct dcpu_isn *isn,
+		dcpu_op_t *op, char *buf)
 {
 	// not implemented yet
 	return -EIO;
 }
 
 #if 0
-struct x10c_parser_label {
+struct dcpu_parser_label {
 	struct list link;
 	const char *name;
-	x10c_word ofs;
+	dcpu_word ofs;
 };
 
-static void x10c_parser_add_label (struct x10c_parser *pr, const char *name)
+static void dcpu_parser_add_label (struct dcpu_parser *pr, const char *name)
 {
-	struct x10c_parser_label *lab;
+	struct dcpu_parser_label *lab;
 
 	lab = calloc(1, sizeof(*lab));
 
@@ -142,10 +142,10 @@ static void x10c_parser_add_label (struct x10c_parser *pr, const char *name)
 	list_add_tail(&lab->link, &pr->labels);
 }
 
-static long x10c_parser_find_label (struct x10c_parser *pr,
+static long dcpu_parser_find_label (struct dcpu_parser *pr,
 		const char *name)
 {
-	struct x10c_parser_label *lab;
+	struct dcpu_parser_label *lab;
 
 	list_for_each_entry(lab, &pr->labels, link) {
 		if (!strcmp(name, lab->name))
@@ -156,22 +156,22 @@ static long x10c_parser_find_label (struct x10c_parser *pr,
 }
 #endif
 
-static void x10c_parser_dump(struct x10c_parser *pr, FILE *out)
+static void dcpu_parser_dump(struct dcpu_parser *pr, FILE *out)
 {
-	x10c_dump(out, pr->ram, pr->ram_used);
+	dcpu_dump(out, pr->ram, pr->ram_used);
 
 	return;
 }
 
-static void x10c_parser_delete(struct x10c_parser *pr)
+static void dcpu_parser_delete(struct dcpu_parser *pr)
 {
-	struct x10c_parsed_line *pl, *pl_next;
-	struct x10c_parser_label *lab, *lab_next;
-	struct x10c_parser_unresolved *ur, *ur_next;
+	struct dcpu_parsed_line *pl, *pl_next;
+	struct dcpu_parser_label *lab, *lab_next;
+	struct dcpu_parser_unresolved *ur, *ur_next;
 
 	list_for_each_entry_safe(pl, pl_next, &pr->parsed_lines, link) {
 		list_del(&pl->link);
-		x10c_parsed_line_delete(pl);
+		dcpu_parsed_line_delete(pl);
 	}
 
 #if 0
@@ -184,17 +184,17 @@ static void x10c_parser_delete(struct x10c_parser *pr)
 	free(pr);
 }
 
-static struct x10c_parser_ops x10c_parser_ops = {
-	.parse_file  = x10c_parser_parse_file,
-	.parse_block = x10c_parser_parse_block,
-	.dump        = x10c_parser_dump,
-	.delete      = x10c_parser_delete,
+static struct dcpu_parser_ops dcpu_parser_ops = {
+	.parse_file  = dcpu_parser_parse_file,
+	.parse_block = dcpu_parser_parse_block,
+	.dump        = dcpu_parser_dump,
+	.delete      = dcpu_parser_delete,
 };
 
-struct x10c_parser * x10c_parser_new(const char *file,
-		x10c_word *ram, unsigned ram_words)
+struct dcpu_parser * dcpu_parser_new(const char *file,
+		dcpu_word *ram, unsigned ram_words)
 {
-	struct x10c_parser *pr;
+	struct dcpu_parser *pr;
 	int rc;
 
 	pr = calloc(1, sizeof(*pr));
@@ -210,11 +210,11 @@ struct x10c_parser * x10c_parser_new(const char *file,
 		pr->ram_allocated = 0;
 	} else {
 		pr->ram_words = 0x10000;
-		pr->ram = calloc(pr->ram_words, sizeof(x10c_word));
+		pr->ram = calloc(pr->ram_words, sizeof(dcpu_word));
 		pr->ram_allocated = 1;
 	}
 
-	pr->ops = x10c_parser_ops;
+	pr->ops = dcpu_parser_ops;
 
 	return pr;
 }

@@ -1,14 +1,14 @@
-#ifndef __included_0x10c_parser_lib_h__
-#define __included_0x10c_parser_lib_h__
+#ifndef __included_dcpu_parser_lib_h__
+#define __included_dcpu_parser_lib_h__
 
 #include <unistd.h>
 
-#include "0x10c_op.h"
-struct x10c_isn;
+#include "dcpu_op.h"
+struct dcpu_isn;
 
-extern int x10c_basic_parser(struct x10c_parser *, const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf);
-extern int x10c_non_basic_parser(struct x10c_parser *, const struct x10c_isn *isn,
-		x10c_op_t *op, char *buf);
+extern int dcpu_basic_parser(struct dcpu_parser *, const struct dcpu_isn *isn,
+		dcpu_op_t *op, char *buf);
+extern int dcpu_non_basic_parser(struct dcpu_parser *, const struct dcpu_isn *isn,
+		dcpu_op_t *op, char *buf);
 
-#endif // __included_0x10c_parser_lib_h__
+#endif // __included_dcpu_parser_lib_h__

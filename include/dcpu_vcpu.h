@@ -1,70 +1,92 @@
-#ifndef __included_0x10c_vcpu_h__
-#define __included_0x10c_vcpu_h__
+#ifndef __included_dcpu_vcpu_h__
+#define __included_dcpu_vcpu_h__
 
 #include <stdio.h>
 
-#include "0x10c_def.h"
-#include "0x10c_op.h"
+#include "dcpu_def.h"
+#include "dcpu_op.h"
+#include "dcpu_fifo.h"
 
-struct x10c_vcpu;
-struct x10c_vcpu_state;
+struct dcpu_vcpu;
+struct dcpu_vcpu_state;
 
-struct x10c_vcpu_ops {
+struct dcpu_vcpu_ops {
 
-	int (*step) (struct x10c_vcpu *vcpu);
+	int (*step) (struct dcpu_vcpu *vcpu);
 
-	int (*run) (struct x10c_vcpu *vcpu);
+	int (*run) (struct dcpu_vcpu *vcpu);
 
-	void (*dump_oneline)(struct x10c_vcpu *vcpu,
-			const struct x10c_vcpu_state *, FILE *out);
+	void (*dump_oneline)(struct dcpu_vcpu *vcpu,
+			const struct dcpu_vcpu_state *, FILE *out);
 
-	void (*delete) (struct x10c_vcpu *vcpu);
+	void (*delete) (struct dcpu_vcpu *vcpu);
 
 };
 
-struct x10c_vcpu {
-	struct x10c_vcpu_state {
+struct dcpu_vcpu {
+	struct dcpu_vcpu_state {
 		union {
-			x10c_word n[X10C_NUM_REGS];
+			dcpu_word n[DCPU_NUM_REGS];
 			struct {
-				x10c_word a, b, c, x, y, z, i, j;
+				dcpu_word a, b, c, x, y, z, i, j;
 			};
 		} gr;
 		union {
-			x10c_word n[4];
+			dcpu_word n[4];
 			struct {
-				x10c_word sp, pc, ex, ia;
+				dcpu_word sp, pc, ex, ia;
 			};
 		} sr;
 
 		unsigned skipping:1; // skipping IFx instructions + one non-IFx
+		unsigned int_mask:1; // when set interrupts don't trigger
+
 	} st;
 
-	struct x10c_vcpu_ops ops;
+	DECLARE_DCPU_FIFO(interrupts, DCPU_MAX_INT_QUEUED);
 
-	x10c_word ram[X10C_RAM_WORDS];
+	struct dcpu_vcpu_ops ops;
+
+	dcpu_word ram[DCPU_RAM_WORDS];
 };
 
+// accept an interrupt
+static inline void dcpu_vcpu_accept_interrupt(struct dcpu_vcpu *vcpu,
+		dcpu_word msg)
+{
+	dcpu_fifo_put(&vcpu->interrupts, msg);
+}
+
 // return current pc word, advancing to the next one
-static inline x10c_word x10c_vcpu_advance_pc_word(struct x10c_vcpu *vcpu)
+static inline dcpu_word dcpu_vcpu_advance_pc_word(struct dcpu_vcpu *vcpu)
 {
 	return vcpu->ram[ vcpu->st.sr.pc ++ ];
 }
 
 // return the op code pointer of the current instruction
-static inline x10c_op_t * x10c_vcpu_current_op(struct x10c_vcpu *vcpu)
+static inline dcpu_op_t * dcpu_vcpu_current_op(struct dcpu_vcpu *vcpu)
 {
 	return (void*)&vcpu->ram[ vcpu->st.sr.pc ];
 }
 
 // copy state from current to previous
-static inline void x10c_vcpu_backup_state(const struct x10c_vcpu *vcpu,
-		struct x10c_vcpu_state *pst)
+static inline void dcpu_vcpu_backup_state(const struct dcpu_vcpu *vcpu,
+		struct dcpu_vcpu_state *pst)
 {
 	*pst = vcpu->st;
 }
 
-extern struct x10c_vcpu * x10c_vcpu_new(void);
+static inline void dcpu_vcpu_push(struct dcpu_vcpu *vcpu, dcpu_word word)
+{
+	vcpu->ram [ --vcpu->st.sr.sp ] = word;
+}
+
+static inline dcpu_word dcpu_vcpu_pop(struct dcpu_vcpu *vcpu)
+{
+	return vcpu->ram [ vcpu->st.sr.sp++ ];
+}
+
+extern struct dcpu_vcpu * dcpu_vcpu_new(void);
 
 
-#endif // __included_0x10c_vcpu_h__
+#endif // __included_dcpu_vcpu_h__

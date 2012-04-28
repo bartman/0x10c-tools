@@ -1,11 +1,12 @@
-#include "0x10c_exec.h"
+#include "dcpu_exec.h"
 
-#include "0x10c_op.h"
-#include "0x10c_isn.h"
-#include "0x10c_vcpu.h"
-#include "0x10c_util.h"
+#include "dcpu_op.h"
+#include "dcpu_isn.h"
+#include "dcpu_vcpu.h"
+#include "dcpu_util.h"
+#include "dcpu_fifo.h"
 
-X10C_ISN_HANDLER(SET)
+DCPU_ISN_HANDLER(SET)
 {
 	uint16_t A = *a;
 
@@ -15,7 +16,7 @@ X10C_ISN_HANDLER(SET)
 }
 
 // sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
-X10C_ISN_HANDLER(ADD)
+DCPU_ISN_HANDLER(ADD)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -28,7 +29,7 @@ X10C_ISN_HANDLER(ADD)
 }
 
 // sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
-X10C_ISN_HANDLER(SUB)
+DCPU_ISN_HANDLER(SUB)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -41,7 +42,7 @@ X10C_ISN_HANDLER(SUB)
 }
 
 // sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
-X10C_ISN_HANDLER(MUL)
+DCPU_ISN_HANDLER(MUL)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -54,7 +55,7 @@ X10C_ISN_HANDLER(MUL)
 }
 
 // like MUL, but treat b, a as signed
-X10C_ISN_HANDLER(MLI)
+DCPU_ISN_HANDLER(MLI)
 {
 	int32_t A = *a;
 	int32_t B = *b;
@@ -67,7 +68,7 @@ X10C_ISN_HANDLER(MLI)
 }
 
 // sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
-X10C_ISN_HANDLER(DIV)
+DCPU_ISN_HANDLER(DIV)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -85,7 +86,7 @@ X10C_ISN_HANDLER(DIV)
 }
 
 // like DIV, but treat b, a as signed. Rounds towards 0
-X10C_ISN_HANDLER(DVI)
+DCPU_ISN_HANDLER(DVI)
 {
 	int32_t A = *a;
 	int32_t B = *b;
@@ -103,7 +104,7 @@ X10C_ISN_HANDLER(DVI)
 }
 
 // sets b to b%a. if a==0, sets b to 0 instead.
-X10C_ISN_HANDLER(MOD)
+DCPU_ISN_HANDLER(MOD)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -119,7 +120,7 @@ X10C_ISN_HANDLER(MOD)
 }
 
 // like MOD, but treat b, a as signed. Rounds towards 0
-X10C_ISN_HANDLER(MDI)
+DCPU_ISN_HANDLER(MDI)
 {
 	int32_t A = *a;
 	int32_t B = *b;
@@ -134,21 +135,21 @@ X10C_ISN_HANDLER(MDI)
 	return 0;
 }
 
-X10C_ISN_HANDLER(AND)
+DCPU_ISN_HANDLER(AND)
 {
 	*b &= *a;
 
 	return 0;
 }
 
-X10C_ISN_HANDLER(BOR)
+DCPU_ISN_HANDLER(BOR)
 {
 	*b |= *a;
 
 	return 0;
 }
 
-X10C_ISN_HANDLER(XOR)
+DCPU_ISN_HANDLER(XOR)
 {
 	*b ^= *a;
 
@@ -156,7 +157,7 @@ X10C_ISN_HANDLER(XOR)
 }
 
 // sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff (logical shift)
-X10C_ISN_HANDLER(SHR)
+DCPU_ISN_HANDLER(SHR)
 {
 	uint16_t A = *a;
 	uint32_t B = *b;
@@ -168,7 +169,7 @@ X10C_ISN_HANDLER(SHR)
 }
 
 // sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
-X10C_ISN_HANDLER(ASR)
+DCPU_ISN_HANDLER(ASR)
 {
 	uint16_t A = *a;
 	int32_t B = *b;
@@ -180,7 +181,7 @@ X10C_ISN_HANDLER(ASR)
 }
 
 // sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
-X10C_ISN_HANDLER(SHL)
+DCPU_ISN_HANDLER(SHL)
 {
 	uint16_t A = *a;
 	uint32_t B = *b;
@@ -192,7 +193,7 @@ X10C_ISN_HANDLER(SHL)
 }
 
 // performs next instruction only if (b&a)!=0
-X10C_ISN_HANDLER(IFB)
+DCPU_ISN_HANDLER(IFB)
 {
 	vcpu->st.skipping = !( *b & *a );
 
@@ -200,7 +201,7 @@ X10C_ISN_HANDLER(IFB)
 }
 
 // performs next instruction only if (b&a)==0
-X10C_ISN_HANDLER(IFC)
+DCPU_ISN_HANDLER(IFC)
 {
 	vcpu->st.skipping = !!( *b & *a );
 
@@ -208,7 +209,7 @@ X10C_ISN_HANDLER(IFC)
 }
 
 // performs next instruction only if b==a
-X10C_ISN_HANDLER(IFE)
+DCPU_ISN_HANDLER(IFE)
 {
 	vcpu->st.skipping = !( *b == *a );
 
@@ -216,7 +217,7 @@ X10C_ISN_HANDLER(IFE)
 }
 
 // performs next instruction only if b!=a
-X10C_ISN_HANDLER(IFN)
+DCPU_ISN_HANDLER(IFN)
 {
 	vcpu->st.skipping = !( *b != *a );
 
@@ -224,7 +225,7 @@ X10C_ISN_HANDLER(IFN)
 }
 
 // performs next instruction only if b>a
-X10C_ISN_HANDLER(IFG)
+DCPU_ISN_HANDLER(IFG)
 {
 	vcpu->st.skipping = !( *b > *a );
 
@@ -232,7 +233,7 @@ X10C_ISN_HANDLER(IFG)
 }
 
 // performs next instruction only if b>a (signed)
-X10C_ISN_HANDLER(IFA)
+DCPU_ISN_HANDLER(IFA)
 {
 	vcpu->st.skipping = !( (int16_t)*b > (int16_t)*a );
 
@@ -240,7 +241,7 @@ X10C_ISN_HANDLER(IFA)
 }
 
 // performs next instruction only if b<a
-X10C_ISN_HANDLER(IFL)
+DCPU_ISN_HANDLER(IFL)
 {
 	vcpu->st.skipping = !( *b < *a );
 
@@ -248,7 +249,7 @@ X10C_ISN_HANDLER(IFL)
 }
 
 // performs next instruction only if b<a (signed)
-X10C_ISN_HANDLER(IFU)
+DCPU_ISN_HANDLER(IFU)
 {
 	vcpu->st.skipping = !( (int16_t)*b < (int16_t)*a );
 
@@ -256,7 +257,7 @@ X10C_ISN_HANDLER(IFU)
 }
 
 // sets b to b+a+EX, sets EX to 0x0001 if there is an overflow, 0x0 otherwise
-X10C_ISN_HANDLER(ADX)
+DCPU_ISN_HANDLER(ADX)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -270,7 +271,7 @@ X10C_ISN_HANDLER(ADX)
 }
 
 // sets b to b-a+EX, sets EX to 0xFFFF if there is an underflow, 0x0 otherwise
-X10C_ISN_HANDLER(SBX)
+DCPU_ISN_HANDLER(SBX)
 {
 	uint32_t A = *a;
 	uint32_t B = *b;
@@ -284,7 +285,7 @@ X10C_ISN_HANDLER(SBX)
 }
 
 // sets b to a, then increases I and J by 1
-X10C_ISN_HANDLER(STI)
+DCPU_ISN_HANDLER(STI)
 {
 	*b = *a;
 
@@ -295,7 +296,7 @@ X10C_ISN_HANDLER(STI)
 }
 
 // sets b to a, then decreases I and J by 1
-X10C_ISN_HANDLER(STD)
+DCPU_ISN_HANDLER(STD)
 {
 	*b = *a;
 
@@ -307,10 +308,10 @@ X10C_ISN_HANDLER(STD)
 
 
 // pushes the address of the next instruction to the stack, then sets PC to a
-X10C_ISN_HANDLER(JSR)
+DCPU_ISN_HANDLER(JSR)
 {
 	/* push address of next instruction onto the stack */
-	vcpu->ram [ --vcpu->st.sr.sp ] = vcpu->st.sr.pc;
+	dcpu_vcpu_push(vcpu, vcpu->st.sr.pc);
 
 	/* set the program counter to a */
 	vcpu->st.sr.pc = *a;
@@ -318,49 +319,53 @@ X10C_ISN_HANDLER(JSR)
 	return 0;
 }
 
-X10C_ISN_HANDLER(HCF)
+DCPU_ISN_HANDLER(HCF)
 {
 	die("halt and catch fire, now");
 }
 
 // triggers a software interrupt with message a
-X10C_ISN_HANDLER(INT)
+DCPU_ISN_HANDLER(INT)
 {
-	die("no INT");
+	dcpu_vcpu_accept_interrupt(vcpu, *a);
+
+	return 0;
 }
 
 // sets a to IA
-X10C_ISN_HANDLER(IAG)
+DCPU_ISN_HANDLER(IAG)
 {
 	*a = vcpu->st.sr.ia;
 }
 
 // sets IA to a
-X10C_ISN_HANDLER(IAS)
+DCPU_ISN_HANDLER(IAS)
 {
 	vcpu->st.sr.ia = *a;
 }
 
 // disables interrupt queueing, pops A from the stack, then pops PC from the stack
-X10C_ISN_HANDLER(RFI)
+DCPU_ISN_HANDLER(RFI)
 {
-	/* TODO: interrupt queue stuff */
+	vcpu->st.int_mask = 0;
 
-	*a             = vcpu->ram [ vcpu->st.sr.sp++ ];
-	vcpu->st.sr.pc = vcpu->ram [ vcpu->st.sr.sp++ ];
+	*a             = dcpu_vcpu_pop(vcpu);
+	vcpu->st.sr.pc = dcpu_vcpu_pop(vcpu);
 
 	return 0;
 }
 
 // if a is nonzero, interrupts will be added to the queue instead of triggered.
 // if a is zero, interrupts will be triggered as normal again
-X10C_ISN_HANDLER(IAQ)
+DCPU_ISN_HANDLER(IAQ)
 {
-	die("no IAQ");
+	vcpu->st.int_mask = !! *a;
+
+	return 0;
 }
 
 // sets a to number of connected hardware devices
-X10C_ISN_HANDLER(HWN)
+DCPU_ISN_HANDLER(HWN)
 {
 	die("no HWN");
 }
@@ -369,13 +374,13 @@ X10C_ISN_HANDLER(HWN)
 // A+(B<<16) is a 32 bit word identifying the hardware id
 // C is the hardware version
 // X+(Y<<16) is a 32 bit word identifying the manufacturer
-X10C_ISN_HANDLER(HWQ)
+DCPU_ISN_HANDLER(HWQ)
 {
 	die("no HWQ");
 }
 
 // sends an interrupt to hardware a
-X10C_ISN_HANDLER(HWI)
+DCPU_ISN_HANDLER(HWI)
 {
 	die("no HWI");
 }

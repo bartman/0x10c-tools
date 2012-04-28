@@ -1,5 +1,5 @@
-TARGET = lib0x10c.a
-SRCS   = 0x10c_isn.c 0x10c_parser.c 0x10c_generator.c 0x10c_exec.c 0x10c_vcpu.c
+TARGET = libdcpu.a
+SRCS   = dcpu_isn.c dcpu_parser.c dcpu_generator.c dcpu_exec.c dcpu_vcpu.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
@@ -10,12 +10,14 @@ INCLUDES = ../include
 
 CPPFLAGS = $(foreach p,${INCLUDES}, -I$p)
 
+MKCONF = $(wildcard ../Makefile.conf)
+
 .PHONY: all clean distclean
 
 all: ${TARGET}
 
 -include $(wildcard ${DEPS})
--include ../Makefile.conf
+-include ${MKCONF}
 
 ${TARGET}: ${OBJS}
 	ar rcs $@ $^
@@ -23,7 +25,7 @@ ${TARGET}: ${OBJS}
 ${OBJS}: %.o: %.c .%.c.dep
 	${CC} ${CFLAGS} ${LUA_CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
-${DEPS}: .%.dep: % Makefile
+${DEPS}: .%.dep: % Makefile ${MKCONF}
 	${CC} ${CFLAGS} ${LUA_CFLAGS} ${CPPFLAGS} -MM $< > $@
 
 tags:

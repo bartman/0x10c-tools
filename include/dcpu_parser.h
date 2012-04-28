@@ -1,17 +1,17 @@
-#ifndef __included_0x10c_parser_h__
-#define __included_0x10c_parser_h__
+#ifndef __included_dcpu_parser_h__
+#define __included_dcpu_parser_h__
 
 #include <unistd.h>
 #include <ctype.h>
 #include "list.h"
 
-#include "0x10c_op.h"
+#include "dcpu_op.h"
 
-struct x10c_parsed_line;
-struct x10c_parser;
+struct dcpu_parsed_line;
+struct dcpu_parser;
 struct lua_State;
 
-struct x10c_parsed_line {
+struct dcpu_parsed_line {
 	struct list link;
 
 	const char *file;
@@ -20,26 +20,26 @@ struct x10c_parsed_line {
 	unsigned word_offset;
 	unsigned word_count;
 
-	x10c_op_t op;
+	dcpu_op_t op;
 
 	//const char *label;
 };
 
-struct x10c_parser_ops {
-	int (*parse_file)(struct x10c_parser *pr, const char *filename);
+struct dcpu_parser_ops {
+	int (*parse_file)(struct dcpu_parser *pr, const char *filename);
 
-	int (*parse_block)(struct x10c_parser *pr, const char *block);
+	int (*parse_block)(struct dcpu_parser *pr, const char *block);
 
-	void (*dump)(struct x10c_parser *pr, FILE *out);
+	void (*dump)(struct dcpu_parser *pr, FILE *out);
 
-	void (*delete)(struct x10c_parser *pr);
+	void (*delete)(struct dcpu_parser *pr);
 };
 
-struct x10c_parser {
-	struct list parsed_lines;   // list of struct x10c_parsed_line
-	//struct list labels;         // list of struct x10c_parser_label
+struct dcpu_parser {
+	struct list parsed_lines;   // list of struct dcpu_parsed_line
+	//struct list labels;         // list of struct dcpu_parser_label
 
-	x10c_word *ram;
+	dcpu_word *ram;
 	unsigned ram_words;
 	unsigned ram_used;
 	unsigned ram_allocated:1;   // is free() needed at cleanup
@@ -47,11 +47,11 @@ struct x10c_parser {
 	const char *file;
 	unsigned line;
 
-	struct x10c_parser_ops ops;
+	struct dcpu_parser_ops ops;
 };
 
-extern struct x10c_parser * x10c_parser_new(const char *name,
-		x10c_word *ram, unsigned ram_words);
+extern struct dcpu_parser * dcpu_parser_new(const char *name,
+		dcpu_word *ram, unsigned ram_words);
 
 
 // ---- parsing helpers ----
@@ -148,4 +148,4 @@ static inline char * trim(char *p)
 }
 
 
-#endif // __included_0x10c_parser_h__
+#endif // __included_dcpu_parser_h__

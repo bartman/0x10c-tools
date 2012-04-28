@@ -1,5 +1,5 @@
-TARGET = 0x10c
-SRCS   = 0x10c.c
+TARGET = dcpu
+SRCS   = dcpu.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
@@ -7,18 +7,20 @@ DEPS   = $(SRCS:%=.%.dep)
 #LUA_LIBS   = $(shell pkg-config --libs ${LUA_PKGS})
 #LUA_CFLAGS = $(shell pkg-config --cflags ${LUA_PKGS})
 
-LIBS   = ../lib/lib0x10c.a
+LIBS   = ../lib/libdcpu.a
 
 INCLUDES = ../include
 
 CPPFLAGS = $(foreach p,${INCLUDES}, -I$p)
+
+MKCONF = $(wildcard ../Makefile.conf)
 
 .PHONY: all clean
 
 all: ${TARGET}
 
 -include $(wildcard ${DEPS})
--include ../Makefile.conf
+-include ${MKCONF}
 
 ${TARGET}: ${OBJS} ${LIBS}
 	${CC} ${LDFLAGS} ${CFLAGS} -o $@ $^ ${LUA_LIBS}
@@ -26,7 +28,7 @@ ${TARGET}: ${OBJS} ${LIBS}
 ${OBJS}: %.o: %.c .%.c.dep
 	${CC} ${CFLAGS} ${LUA_CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
-${DEPS}: .%.dep: % Makefile
+${DEPS}: .%.dep: % Makefile ${MKCONF}
 	${CC} ${CFLAGS} ${LUA_CFLAGS} ${CPPFLAGS} -MM $< > $@
 
 tags:
