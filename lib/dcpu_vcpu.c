@@ -151,6 +151,16 @@ static void dcpu_vcpu_handle_interrupts(struct dcpu_vcpu *vcpu)
 	vcpu->st.gr.a = msg;
 }
 
+static void dcpu_vcpu_poke_hardware(struct dcpu_vcpu *vcpu)
+{
+	struct dcpu_hw *hw;
+
+	list_for_each_entry(hw, &vcpu->hw_list, link) {
+		if (hw->ops.poke)
+			hw->ops.poke(hw);
+	}
+}
+
 static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
 {
 	int rc;
@@ -170,8 +180,11 @@ static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
 
 		vcpu->ops.dump_oneline(vcpu, &prev_st, stdout);
 
-		if (prev_st.sr.pc == vcpu->st.sr.pc)
-			return -EINTR;
+		dcpu_vcpu_poke_hardware(vcpu);
+
+		// if there is no hardware, and the PC didn't change, there is no hope
+		if (prev_st.sr.pc == vcpu->st.sr.pc && vcpu->hw_count)
+			return -ENODEV;
 	}
 }
 
