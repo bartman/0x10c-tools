@@ -83,6 +83,7 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 	struct dcpu_isn *isn;
 	dcpu_word *a, *b;
 	dcpu_word tmp_a, tmp_b;
+	int cycles;
 
 	op = dcpu_vcpu_current_op(vcpu);
 
@@ -102,6 +103,10 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 		a = dcpu_vcpu_get_isn_arg(vcpu, op->x.a, &tmp_a, 0);
 		b = NULL;
 	}
+
+	cycles = dcpu_op_cycles(op, isn);
+	if (cycles > 0)
+		vcpu->st.cycles += cycles;
 
 	if (!vcpu->st.skipping) {
 		rc = isn->ops.execute(isn, op, a, b, vcpu);
@@ -170,10 +175,11 @@ static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
 static void dcpu_vcpu_dump_oneline(struct dcpu_vcpu *vcpu,
 		const struct dcpu_vcpu_state *old, FILE *out)
 {
-#define DUMP_HDR "---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
+#define DUMP_HDR "TIME(d)  ---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
+#define Ft  RSTCLR     "%04x" CLR(B,BLACK) "(" CLR(N,GREEN) "%d" CLR(B,BLACK) ")"
 #define Fr  "%s"       "%04x" RSTCLR
 #define Fsk CLR(B,RED) "%s"   RSTCLR
-#define DUMP_FMT ""Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr"   "Fr" "Fr" "Fr" "Fr"  "Fsk RSTCLR "  %-15s %s\n"
+#define DUMP_FMT Ft"  "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr"   "Fr" "Fr" "Fr" "Fr"  "Fsk RSTCLR "  %-15s %s\n"
 
 	if (vcpu) {
 		char hex_buf[1024];
@@ -193,6 +199,8 @@ static void dcpu_vcpu_dump_oneline(struct dcpu_vcpu *vcpu,
 		vcpu->st.reg
 
 		fprintf(out, DUMP_FMT,
+				(dcpu_word)vcpu->st.cycles,
+				old ? vcpu->st.cycles - old->cycles : 0,
 				Dr(gr.a),
 				Dr(gr.b),
 				Dr(gr.c),

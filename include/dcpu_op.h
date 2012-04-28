@@ -52,7 +52,20 @@ static inline unsigned dcpu_op_len(const dcpu_op_t *op)
 	}
 }
 
+/* return cycle cost of an argument */
+static inline int dcpu_op_arg_cycles(unsigned arg_desc)
+{
+	switch(arg_desc) {
+	default:
+		return 0;
 
+	case DCPU_ARG_MREF_OFS_REG(A) ... DCPU_ARG_MREF_OFS_REG(J):
+	case DCPU_REG_PICK:
+	case DCPU_MREF_NEXT_WORD:
+	case DCPU_NEXT_WORD:
+		return 1;
+	}
+}
 
 
 #endif // __included_dcpu_op_h__

@@ -2,6 +2,7 @@
 #define __included_dcpu_isn_h__
 #include <stdint.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "dcpu_def.h"
 #include "dcpu_op.h"
@@ -95,6 +96,32 @@ static inline struct dcpu_reg * dcpu_lookup_reg_for_num(unsigned num)
 }
 
 extern struct dcpu_reg * dcpu_lookup_reg_for_name(const char *name);
+
+/* return cycle cost of a given op
+ * isn can be NULL, or provided if known,
+ * returns negative value for bad opcodes */
+static inline int dcpu_op_cycles(const dcpu_op_t *op,
+		const struct dcpu_isn *isn)
+{
+	unsigned cycles;
+
+	if (!isn) {
+		isn = dcpu_lookup_isn_for_op(op);
+		if (!isn)
+			return -EINVAL;
+	}
+
+	if (dcpu_op_is_basic(op)) {
+		cycles = dcpu_op_arg_cycles(op->b.a)
+		       + dcpu_op_arg_cycles(op->b.b);
+	} else {
+		cycles = dcpu_op_arg_cycles(op->x.a);
+	}
+
+	return cycles + isn->cycles;
+}
+
+
 
 
 

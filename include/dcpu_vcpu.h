@@ -25,6 +25,8 @@ struct dcpu_vcpu_ops {
 
 struct dcpu_vcpu {
 	struct dcpu_vcpu_state {
+		uint64_t cycles;
+
 		union {
 			dcpu_word n[DCPU_NUM_REGS];
 			struct {
