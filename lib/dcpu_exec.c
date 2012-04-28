@@ -377,7 +377,21 @@ DCPU_ISN_HANDLER(HWN)
 // X+(Y<<16) is a 32 bit word identifying the manufacturer
 DCPU_ISN_HANDLER(HWQ)
 {
-	die("no HWQ");
+	dcpu_word hw_id;
+	struct dcpu_hw *hw;
+	int rc;
+
+	hw_id = *a;
+	hw = dcpu_vcpu_find_hw(vcpu, hw_id);
+	if (hw) {
+		dcpu_vcpu_gr(vcpu,a) = hw->hw_device_id;
+		dcpu_vcpu_gr(vcpu,b) = hw->hw_device_id >> 16;
+		dcpu_vcpu_gr(vcpu,c) = hw->hw_version;
+		dcpu_vcpu_gr(vcpu,x) = hw->hw_vendor_id;
+		dcpu_vcpu_gr(vcpu,y) = hw->hw_vendor_id >> 16;
+	}
+
+	return 0;
 }
 
 // sends an interrupt to hardware a
