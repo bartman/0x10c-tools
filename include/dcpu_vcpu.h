@@ -6,9 +6,11 @@
 #include "dcpu_def.h"
 #include "dcpu_op.h"
 #include "dcpu_fifo.h"
+#include "list.h"
 
 struct dcpu_vcpu;
 struct dcpu_vcpu_state;
+struct dcpu_hw;
 
 struct dcpu_vcpu_ops {
 
@@ -47,10 +49,16 @@ struct dcpu_vcpu {
 
 	DECLARE_DCPU_FIFO(interrupts, DCPU_MAX_INT_QUEUED);
 
+	dcpu_word   hw_count;
+	struct list hw_list;
+
 	struct dcpu_vcpu_ops ops;
 
 	dcpu_word ram[DCPU_RAM_WORDS];
 };
+
+// create a new vcpu
+extern struct dcpu_vcpu * dcpu_vcpu_new(void);
 
 // accept an interrupt
 static inline void dcpu_vcpu_accept_interrupt(struct dcpu_vcpu *vcpu,
@@ -88,7 +96,12 @@ static inline dcpu_word dcpu_vcpu_pop(struct dcpu_vcpu *vcpu)
 	return vcpu->ram [ vcpu->st.sr.sp++ ];
 }
 
-extern struct dcpu_vcpu * dcpu_vcpu_new(void);
+// add and remove a piece of hardware
+extern int dcpu_vcpu_register_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw);
+extern int dcpu_vcpu_unregister_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw);
+
+// find a piece of hardware by ID
+extern struct dcpu_hw *dcpu_vcpu_find_hw(struct dcpu_vcpu *vcpu, dcpu_word id);
 
 
 #endif // __included_dcpu_vcpu_h__

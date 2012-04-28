@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #include "dcpu_vcpu.h"
+#include "dcpu_hw.h"
 #include "dcpu_isn.h"
 #include "dcpu_util.h"
 #include "dcpu_generator.h"
@@ -239,7 +240,70 @@ struct dcpu_vcpu * dcpu_vcpu_new(void)
 
 	dcpu_fifo_init(&vcpu->interrupts, DCPU_MAX_INT_QUEUED);
 
+	vcpu->hw_count;
+	list_init(&vcpu->hw_list);
+
 	vcpu->ops = dcpu_vcpu_ops;
 
 	return vcpu;
 }
+
+// ------------------------------------------------------------------------
+
+// add and remove a piece of hardware
+int dcpu_vcpu_register_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw)
+{
+	// uninitialized or already on the list
+	if (hw->link.next)
+		return -EBUSY;
+
+	// must have a delete callback
+	if (!hw->ops.delete)
+		return -EINVAL;
+
+	// must have one of poke or handle_interrupt callbacks
+	if (!hw->ops.poke && !hw->ops.handle_interrupt)
+		return -EINVAL;
+
+	hw->vcpu = vcpu;
+	hw->hw_id = vcpu->hw_count ++;
+	list_add_tail(&hw->link, &vcpu->hw_list);
+
+	return 0;
+}
+
+// add and remove a piece of hardware
+int dcpu_vcpu_unregister_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw)
+{
+	// not attached
+	if (!hw->link.next)
+		return -EFAULT;
+
+	// detach
+	vcpu->hw_count --;
+	list_del(&hw->link);
+
+	// reset id
+	hw->hw_id = -1;
+
+	if (!hw->ops.delete)
+		return -EFAULT;
+
+	hw->ops.delete(hw);
+	return 0;
+}
+
+// find a piece of hardware by ID
+struct dcpu_hw *dcpu_vcpu_find_hw(struct dcpu_vcpu *vcpu, dcpu_word id)
+{
+	struct dcpu_hw *hw;
+
+	list_for_each_entry(hw, &vcpu->hw_list, link) {
+		if (hw->hw_id == id)
+			return hw;
+	}
+
+	return NULL;
+}
+
+
