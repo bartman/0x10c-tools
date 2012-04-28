@@ -1,0 +1,9 @@
+        IAS handler
+        INT 1
+
+:end    SET PC, end
+
+:handler
+        SET B, 0x8000
+        ADD B, A
+        RFI 0
