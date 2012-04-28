@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "dcpu_def.h"
+#include "dcpu_colours.h"
 
 #define __stringify_1(x...)     #x
 #define __stringify(x...)       __stringify_1(x)
@@ -24,9 +25,16 @@ static inline void dcpu_dump(FILE *out, dcpu_word *data, unsigned count)
 		fprintf(out, "\n");
 }
 
-#define die(fmt,a...) ({ \
+#define warn(fmt,a...) ({ \
 		fflush(stdout); \
-		fprintf(stderr, "ERROR: " fmt "\n", ##a); \
+		fprintf(stderr, CLR(B,YELLOW) "WARN: " fmt RSTCLR "\n", ##a); \
+		})
+#define error(fmt,a...) ({ \
+		fflush(stdout); \
+		fprintf(stderr, CLR(B,RED) "ERROR: " fmt RSTCLR "\n", ##a); \
+		})
+#define die(fmt,a...) ({ \
+		error(fmt, ##a); \
 		exit(EXIT_FAILURE); \
 		})
 
