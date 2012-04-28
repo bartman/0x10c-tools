@@ -77,8 +77,8 @@ DD.special_opcodes = {
         IAG={ num=0x09, cycles=1 },
         IAS={ num=0x0a, cycles=1 },
 
-        RFI={ num=0x09, cycles=3 },
-        IAQ={ num=0x0a, cycles=2 },
+        RFI={ num=0x0b, cycles=3 },
+        IAQ={ num=0x0c, cycles=2 },
 
         HWN={ num=0x10, cycles=2 },
         HWQ={ num=0x11, cycles=4 },
