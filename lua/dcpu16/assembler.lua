@@ -78,6 +78,24 @@ function DA.new()
 
                 dbgf(1,"  >> arg=%s", DataDumper(arg,""))
 
+                local function delayed_label_lookup_helper(name, label_used_at)
+                        local label_offset = s.labels[name]
+                        if label_offset ~= nil then
+                                -- label location already known
+                                s.memory[label_used_at] = label_offset
+                        else
+                                -- label location not yet known, do it later
+                                isn.finalize = function(self)
+                                        label_offset = s.labels[name]
+                                        if label_offset ~= nil then
+                                                s.memory[label_used_at] = label_offset
+                                        else
+                                                die(string.format("could not resolve variable/label '%s'", name))
+                                        end
+                                end
+                        end
+                end
+
                 if arg.greg then
                         dbg(3,"", "greg", arg.greg)
 
@@ -114,25 +132,8 @@ function DA.new()
                 elseif arg.var then
                         dbg(3,"", "var", arg.var)
 
-                        local label_used_at = s:mem_alloc(1)
+                        delayed_label_lookup_helper(arg.var, s:mem_alloc(1))
                         isn.length = isn.length + 1
-
-                        local label_offset = s.labels[arg.var]
-                        if label_offset ~= nil then
-                                -- label location already known
-                                s.memory[label_used_at] = label_offset
-                        else
-                                -- label location not yet known, do it later
-                                isn.finalize = function(self)
-                                        label_offset = s.labels[arg.var]
-                                        if label_offset ~= nil then
-                                                s.memory[label_used_at] = label_offset
-                                        else
-                                                die(string.format("could not resolve variable/label '%s'", arg.var))
-                                        end
-                                end
-                        end
-
                         num = 0x1f
 
                 elseif arg.mref then
@@ -152,21 +153,28 @@ function DA.new()
                                 end
                         end
 
-                        if reg and arg.mref.num then
-
-                                num = reg.mref_ofs
+                        local has_ofs = false
+                        if arg.mref.num then
                                 s:mem_append(arg.mref.num)
                                 isn.length = isn.length + 1
+                                has_ofs = true
+
+                        elseif arg.mref.var then
+
+                                delayed_label_lookup_helper(arg.mref.var, s:mem_alloc(1))
+                                isn.length = isn.length + 1
+                                has_ofs = true
+                                
+                        end
+
+                        if reg and has_ofs then
+                                num = reg.mref_ofs
 
                         elseif reg then
-
                                 num = reg.mref_solo
 
-                        elseif arg.mref.num then
-
+                        elseif has_ofs then
                                 num = 0x1e
-                                s:mem_append(arg.mref.num)
-                                isn.length = isn.length + 1
 
                         else
                                 die("don't know how to encode mref "..DataDumper(arg.mref,""))
