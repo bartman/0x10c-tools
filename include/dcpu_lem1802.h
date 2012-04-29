@@ -8,6 +8,7 @@
 #include "dcpu_fifo.h"
 
 struct dcpu_vcpu;
+struct dcpu_lem1802;
 
 #define DCPU_LEM1802_VENDOR_ID 0x1c6c8b36 // NYA_ELEKTRISKA
 #define DCPU_LEM1802_DEVICE_ID 0x7349f615
@@ -20,19 +21,13 @@ struct dcpu_vcpu;
 #define DCPU_LEM1802_CMD_MEM_DUMP_FONT      4  // copies 386 words of font data to [B]
 #define DCPU_LEM1802_CMD_MEM_DUMP_PALETTE   5  // copies 16 words of palette data to [B]
 
-struct dcpu_lem1802 {
-	struct dcpu_hw hw;
-
-	dcpu_word video_ram_base;
-	dcpu_word font_ram_base;
-	dcpu_word palette_ram_base;
-	dcpu_word border_color;
-};
-
-static inline struct dcpu_lem1802 * dcpu_hw_to_lem1802(struct dcpu_hw *hw)
-{
-	return container_of(hw, struct dcpu_lem1802, hw);
-}
+// attributes of the LEM1802
+#define DCPU_LEM1802_SCREEN_COLS 32
+#define DCPU_LEM1802_SCREEN_LINES 12
+#define DCPU_LEM1802_VIDEO_RAM_SIZE \
+	(DCPU_LEM1802_SCREEN_COLS * DCPU_LEM1802_SCREEN_LINES)
+#define DCPU_LEM1802_FONT_RAM_SIZE 256
+#define DCPU_LEM1802_PALETTE_RAM_SIZE 16
 
 // create a new lem1802 and return it
 extern struct dcpu_lem1802 * dcpu_lem1802_new(void);

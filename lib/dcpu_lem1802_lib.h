@@ -1,13 +1,30 @@
 #ifndef __included_dcpu_lem1802_lib_h__
 #define __included_dcpu_lem1802_lib_h__
 
-#define DCPU_LEM1802_SCREEN_COLS 32
-#define DCPU_LEM1802_SCREEN_LINES 12
-#define DCPU_LEM1802_VIDEO_RAM_SIZE \
-	(DCPU_LEM1802_SCREEN_COLS * DCPU_LEM1802_SCREEN_LINES)
-#define DCPU_LEM1802_FONT_RAM_SIZE 256
-#define DCPU_LEM1802_PALETTE_RAM_SIZE 16
 
+#include "dcpu_def.h"
+#include "dcpu_lem1802.h"
+
+struct dcpu_lem1802 {
+	struct dcpu_hw hw;
+
+	dcpu_word video_ram_base;
+	dcpu_word font_ram_base;
+	dcpu_word palette_ram_base;
+	dcpu_word border_color;
+
+};
+
+static inline struct dcpu_lem1802 * dcpu_hw_to_lem1802(struct dcpu_hw *hw)
+{
+	return container_of(hw, struct dcpu_lem1802, hw);
+}
+
+// the actual curses display
+#define LEM1802_SCREEN_COLS   (DCPU_LEM1802_SCREEN_COLS + 4)
+#define LEM1802_SCREEN_LINES  (DCPU_LEM1802_SCREEN_LINES + 4)
+
+// video ram is made up of these cells...
 union lem1802_video_cell {
 	// ffffbbbbBccccccc
 	dcpu_word word;
@@ -19,6 +36,7 @@ union lem1802_video_cell {
 	};
 };
 
+// font ram is made up of these cells...
 union lem1802_font_cell {
 	// each font entry is defined 4x8 matrix of bits and stored as 4 octets
 	struct {
@@ -29,6 +47,7 @@ union lem1802_font_cell {
 	};
 };
 
+// palette ram is made up of these cells...
 union lem1802_palette_cell {
 	// 0000rrrrggggbbbb
 	dcpu_word word;
