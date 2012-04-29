@@ -334,3 +334,45 @@ struct dcpu_hw *dcpu_vcpu_find_hw(struct dcpu_vcpu *vcpu, dcpu_word id)
 }
 
 
+void dcpu_vcpu_copy_to_ram(struct dcpu_vcpu *vcpu,
+		dcpu_word ram_dst, const void *src, dcpu_word len)
+{
+	uint fits;
+	uint copy;
+
+	fits = (uint)DCPU_RAM_WORDS - ram_dst;
+
+	// copy what fits before the end of ram
+	copy = len < fits ? len : fits;
+
+	memcpy(dcpu_vcpu_ram(vcpu) + ram_dst,
+			src, sizeof(dcpu_word) * copy);
+
+	// if overflow, copy rest to start of ram
+	if (copy < len)
+		memcpy(dcpu_vcpu_ram(vcpu),
+				src + sizeof(dcpu_word) * copy,
+				len - copy);
+}
+
+void dcpu_vcpu_copy_from_ram(const struct dcpu_vcpu *vcpu,
+		void *dst, dcpu_word ram_src, dcpu_word len)
+{
+	uint fits;
+	uint copy;
+
+	fits = (uint)DCPU_RAM_WORDS - ram_src;
+
+	// copy what fits before the end of ram
+	copy = len < fits ? len : fits;
+
+	memcpy(dst, dcpu_vcpu_ram(vcpu) + ram_src,
+			sizeof(dcpu_word) * copy);
+
+	// if overflow, copy rest from start of ram
+	if (copy < len)
+		memcpy(dst + sizeof(dcpu_word) * copy,
+				dcpu_vcpu_ram(vcpu),
+				len - copy);
+}
+

@@ -65,6 +65,7 @@ extern struct dcpu_vcpu * dcpu_vcpu_new(void);
 #define dcpu_vcpu_cycles(vcpu)  ((vcpu)->st.cycles)
 #define dcpu_vcpu_gr(vcpu)      (&(vcpu)->st.gr)
 #define dcpu_vcpu_sr(vcpu)      (&(vcpu)->st.sr)
+#define dcpu_vcpu_ram(vcpu)     (&(vcpu)->ram)
 
 // accept an interrupt
 static inline void dcpu_vcpu_accept_interrupt(struct dcpu_vcpu *vcpu,
@@ -108,6 +109,12 @@ extern int dcpu_vcpu_unregister_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw);
 
 // find a piece of hardware by ID
 extern struct dcpu_hw *dcpu_vcpu_find_hw(struct dcpu_vcpu *vcpu, dcpu_word id);
+
+// copy to/from ram with wraparound
+extern void dcpu_vcpu_copy_to_ram(struct dcpu_vcpu *vcpu,
+		dcpu_word ram_dst, const void *src, dcpu_word len);
+extern void dcpu_vcpu_copy_from_ram(const struct dcpu_vcpu *vcpu,
+		void *dst, dcpu_word ram_src, dcpu_word len);
 
 
 #endif // __included_dcpu_vcpu_h__
