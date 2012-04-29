@@ -18,9 +18,6 @@ struct dcpu_vcpu_ops {
 
 	int (*run) (struct dcpu_vcpu *vcpu);
 
-	void (*dump_oneline)(struct dcpu_vcpu *vcpu,
-			const struct dcpu_vcpu_state *, FILE *out);
-
 	void (*delete) (struct dcpu_vcpu *vcpu);
 
 };
@@ -53,6 +50,9 @@ struct dcpu_vcpu {
 
 	dcpu_word   hw_count;
 	struct list hw_list;
+
+
+	int (*debug_callback)(struct dcpu_vcpu *vcpu);
 
 	struct dcpu_vcpu_ops ops;
 
@@ -101,6 +101,12 @@ static inline void dcpu_vcpu_push(struct dcpu_vcpu *vcpu, dcpu_word word)
 static inline dcpu_word dcpu_vcpu_pop(struct dcpu_vcpu *vcpu)
 {
 	return vcpu->ram [ vcpu->st.sr.sp++ ];
+}
+
+static inline void dcpu_vcpu_set_debug(struct dcpu_vcpu *vcpu,
+		int (*debug_callback)(struct dcpu_vcpu *vcpu))
+{
+	vcpu->debug_callback = debug_callback;
 }
 
 // add and remove a piece of hardware (return 0 on success)
