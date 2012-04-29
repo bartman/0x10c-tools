@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
 
 	dcpu_add_clock(vcpu);
 	dcpu_add_keyboard(vcpu);
+	dcpu_add_lem1802(vcpu);
 
 	return vcpu->ops.run(vcpu);
 }
