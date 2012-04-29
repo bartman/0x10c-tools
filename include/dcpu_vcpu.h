@@ -52,7 +52,10 @@ struct dcpu_vcpu {
 	struct list hw_list;
 
 
-	int (*debug_callback)(struct dcpu_vcpu *vcpu);
+#define DCPU_VCPU_DEBUG_INIT      0 // initialize the debugger
+#define DCPU_VCPU_DEBUG_ISN_DONE  1 // instruction finished executing
+#define DCPU_VCPU_DEBUG_INTERRUPT 2 // interrupt changed PC
+	int (*debug_callback)(struct dcpu_vcpu *vcpu, int what);
 
 	struct dcpu_vcpu_ops ops;
 
@@ -104,7 +107,7 @@ static inline dcpu_word dcpu_vcpu_pop(struct dcpu_vcpu *vcpu)
 }
 
 static inline void dcpu_vcpu_set_debug(struct dcpu_vcpu *vcpu,
-		int (*debug_callback)(struct dcpu_vcpu *vcpu))
+		int (*debug_callback)(struct dcpu_vcpu *vcpu, int what))
 {
 	vcpu->debug_callback = debug_callback;
 }

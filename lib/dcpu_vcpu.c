@@ -78,6 +78,56 @@ static dcpu_word * dcpu_vcpu_get_isn_arg(struct dcpu_vcpu *vcpu,
 	}
 }
 
+static inline int dcpu_vcpu_debug_callback(struct dcpu_vcpu *vcpu, int what)
+{
+	int rc = 0;
+
+	if (vcpu->debug_callback)
+		rc = vcpu->debug_callback(vcpu, what);
+
+	return rc;
+}
+
+static int dcpu_vcpu_handle_interrupts(struct dcpu_vcpu *vcpu)
+{
+	dcpu_word msg;
+	int rc;
+
+	// do we have pending interrupts?
+	if (! dcpu_fifo_get(&vcpu->interrupts, &msg))
+		return 0;
+
+	// are we masking interrupts?
+	if (vcpu->st.int_mask)
+		return 0;
+
+	// do we have an interrupt handler?
+	if (!vcpu->st.sr.ia)
+		return 0;
+
+	vcpu->st.int_mask = 1;
+
+	dcpu_vcpu_push(vcpu, vcpu->st.sr.pc);
+	dcpu_vcpu_push(vcpu, vcpu->st.gr.a);
+
+	vcpu->st.sr.pc = vcpu->st.sr.ia;
+	vcpu->st.gr.a = msg;
+
+	rc = dcpu_vcpu_debug_callback(vcpu, DCPU_VCPU_DEBUG_INTERRUPT);
+
+	return rc;
+}
+
+static void dcpu_vcpu_poke_hardware(struct dcpu_vcpu *vcpu)
+{
+	struct dcpu_hw *hw;
+
+	list_for_each_entry(hw, &vcpu->hw_list, link) {
+		if (hw->ops.poke)
+			hw->ops.poke(hw);
+	}
+}
+
 static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 {
 	int rc;
@@ -122,63 +172,31 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 		vcpu->st.skipping = 0;
 	}
 
+	rc = dcpu_vcpu_debug_callback(vcpu, DCPU_VCPU_DEBUG_ISN_DONE);
+	if (rc)
+		return rc;
+
+	rc = dcpu_vcpu_handle_interrupts(vcpu);
+	if (rc)
+		return rc;
+
+	dcpu_vcpu_poke_hardware(vcpu);
+	// TODO: may need to call debugger if hw changed stuff
 
 	return 0;
-}
-
-static void dcpu_vcpu_handle_interrupts(struct dcpu_vcpu *vcpu)
-{
-	dcpu_word msg;
-
-	// do we have pending interrupts?
-	if (! dcpu_fifo_get(&vcpu->interrupts, &msg))
-		return;
-
-	// are we masking interrupts?
-	if (vcpu->st.int_mask)
-		return;
-
-	// do we have an interrupt handler?
-	if (!vcpu->st.sr.ia)
-		return;
-
-	vcpu->st.int_mask = 1;
-
-	dcpu_vcpu_push(vcpu, vcpu->st.sr.pc);
-	dcpu_vcpu_push(vcpu, vcpu->st.gr.a);
-
-	vcpu->st.sr.pc = vcpu->st.sr.ia;
-	vcpu->st.gr.a = msg;
-}
-
-static void dcpu_vcpu_poke_hardware(struct dcpu_vcpu *vcpu)
-{
-	struct dcpu_hw *hw;
-
-	list_for_each_entry(hw, &vcpu->hw_list, link) {
-		if (hw->ops.poke)
-			hw->ops.poke(hw);
-	}
 }
 
 static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
 {
 	int rc;
 
+	// initialize
+	dcpu_vcpu_debug_callback(vcpu, DCPU_VCPU_DEBUG_INIT);
+
 	for(;;) {
 		rc = vcpu->ops.step(vcpu);
 		if (rc<0)
 			return rc;
-
-		dcpu_vcpu_handle_interrupts(vcpu);
-
-		if (vcpu->debug_callback) {
-			rc = vcpu->debug_callback(vcpu);
-			if (rc)
-				return rc;
-		}
-
-		dcpu_vcpu_poke_hardware(vcpu);
 	}
 }
 
