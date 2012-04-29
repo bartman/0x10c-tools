@@ -20,13 +20,6 @@ struct dcpu_vcpu;
 #define DCPU_LEM1802_CMD_MEM_DUMP_FONT      4  // copies 386 words of font data to [B]
 #define DCPU_LEM1802_CMD_MEM_DUMP_PALETTE   5  // copies 16 words of palette data to [B]
 
-#define DCPU_LEM1802_SCREEN_COLS 32
-#define DCPU_LEM1802_SCREEN_LINES 12
-#define DCPU_LEM1802_VIDEO_RAM_SIZE \
-	(DCPU_LEM1802_SCREEN_COLS * DCPU_LEM1802_SCREEN_LINES)
-#define DCPU_LEM1802_FONT_RAM_SIZE 256
-#define DCPU_LEM1802_PALETTE_RAM_SIZE 16
-
 struct dcpu_lem1802 {
 	struct dcpu_hw hw;
 

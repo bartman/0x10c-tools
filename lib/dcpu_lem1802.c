@@ -2,6 +2,7 @@
 #include <errno.h>
 
 #include "dcpu_lem1802.h"
+#include "dcpu_lem1802_lib.h"
 #include "dcpu_vcpu.h"
 
 static dcpu_word dcpu_lem1802_default_font[DCPU_LEM1802_FONT_RAM_SIZE] = {
