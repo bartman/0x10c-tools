@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <errno.h>
+#include <curses.h>
 
 #include "dcpu_lem1802.h"
 #include "dcpu_lem1802_lib.h"
@@ -18,6 +19,7 @@ struct dcpu_hw_ops dcpu_lem1802_ops;
 struct dcpu_lem1802 * dcpu_lem1802_new(void)
 {
 	struct dcpu_lem1802 *lem;
+	WINDOW *win;
 
 	lem = calloc(1, sizeof(*lem));
 
@@ -32,6 +34,19 @@ struct dcpu_lem1802 * dcpu_lem1802_new(void)
 	lem->palette_ram_base = 0;
 
 	lem->hw.ops = dcpu_lem1802_ops;
+
+#if 0
+	win = newwin(LEM1802_SCREEN_LINES, LEM1802_SCREEN_COLS, 0, 0);
+	lem->win = win;
+
+	erase();
+	refresh();
+
+	wattrset(win, A_NORMAL);
+	box(win, ACS_VLINE, ACS_HLINE);
+	mvwaddstr(win, 2, 2, "012345678901234567890123456789");
+	wrefresh(win);
+#endif
 
 	return lem;
 

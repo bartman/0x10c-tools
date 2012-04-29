@@ -1,6 +1,7 @@
 #ifndef __included_dcpu_lem1802_lib_h__
 #define __included_dcpu_lem1802_lib_h__
 
+#include <curses.h>
 
 #include "dcpu_def.h"
 #include "dcpu_lem1802.h"
@@ -13,6 +14,7 @@ struct dcpu_lem1802 {
 	dcpu_word palette_ram_base;
 	dcpu_word border_color;
 
+	WINDOW *win;
 };
 
 static inline struct dcpu_lem1802 * dcpu_hw_to_lem1802(struct dcpu_hw *hw)

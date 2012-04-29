@@ -7,6 +7,10 @@ DEPS   = $(SRCS:%=.%.dep)
 #LUA_LIBS   = $(shell pkg-config --libs ${LUA_PKGS})
 #LUA_CFLAGS = $(shell pkg-config --cflags ${LUA_PKGS})
 
+NC_PKGS    = ncurses
+NC_LIBS    = $(shell pkg-config --libs ${NC_PKGS})
+NC_CFLAGS  = $(shell pkg-config --cflags ${NC_PKGS})
+
 LIBS   = ../lib/libdcpu.a
 
 INCLUDES = ../include
@@ -23,13 +27,13 @@ all: ${TARGET}
 -include ${MKCONF}
 
 ${TARGET}: ${OBJS} ${LIBS}
-	${CC} ${LDFLAGS} ${CFLAGS} -o $@ $^ ${LUA_LIBS}
+	${CC} ${LDFLAGS} ${CFLAGS} -o $@ $^ ${LUA_LIBS} ${NC_LIBS}
 
 ${OBJS}: %.o: %.c .%.c.dep
-	${CC} ${CFLAGS} ${LUA_CFLAGS} ${CPPFLAGS} -c -o $@ $<
+	${CC} ${CFLAGS} ${LUA_CFLAGS} ${NC_CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 ${DEPS}: .%.dep: % Makefile ${MKCONF}
-	${CC} ${CFLAGS} ${LUA_CFLAGS} ${CPPFLAGS} -MM $< > $@
+	${CC} ${CFLAGS} ${LUA_CFLAGS} ${NC_CFLAGS} ${CPPFLAGS} -MM $< > $@
 
 tags:
 	${MAKE} -C .. $@

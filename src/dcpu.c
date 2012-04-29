@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include <curses.h>
 
 #include "dcpu_op.h"
 #include "dcpu_isn.h"
@@ -10,6 +12,29 @@
 #include "dcpu_util.h"
 #include "dcpu_clock.h"
 #include "dcpu_keyboard.h"
+
+void curses_stop(void)
+{
+	echo();
+	endwin();
+}
+
+void curses_start(void)
+{
+	initscr();
+
+	atexit(curses_stop);
+
+	if (has_colors()) {
+		start_color();
+		use_default_colors();
+	}
+	cbreak();
+	noecho();
+
+	erase();
+	refresh();
+}
 
 /* this function dumps registers using ANSI colour codes */
 static void dump_oneline(struct dcpu_vcpu *vcpu,
@@ -87,6 +112,8 @@ int main(int argc, char *argv[])
 	filename = argv[1];
 	if (!filename)
 		die("need a filename");
+
+	//curses_start();
 
 	vcpu = dcpu_vcpu_new();
 
