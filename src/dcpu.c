@@ -9,6 +9,7 @@
 #include "dcpu_parser.h"
 #include "dcpu_util.h"
 #include "dcpu_clock.h"
+#include "dcpu_keyboard.h"
 
 int main(int argc, char *argv[])
 {
@@ -32,6 +33,7 @@ int main(int argc, char *argv[])
 	pr->ops.delete(pr);
 
 	dcpu_add_clock(vcpu);
+	dcpu_add_keyboard(vcpu);
 
 	return vcpu->ops.run(vcpu);
 }

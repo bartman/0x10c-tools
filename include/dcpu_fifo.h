@@ -23,6 +23,11 @@ static inline void dcpu_fifo_init(struct dcpu_fifo *fifo, unsigned max)
 	fifo->size = max;
 }
 
+static inline void dcpu_fifo_reset(struct dcpu_fifo *fifo)
+{
+	fifo->head = fifo->tail = fifo->used = 0;
+}
+
 static inline int dcpu_fifo_is_empty(const struct dcpu_fifo *fifo)
 {
 	return fifo->used == 0;
@@ -59,6 +64,15 @@ static inline bool dcpu_fifo_get(struct dcpu_fifo *fifo, dcpu_word *item)
 	fifo->tail = (fifo->tail + 1) % fifo->size;
 	fifo->used --;
 
+	return true;
+}
+
+static inline bool dcpu_fifo_peek(struct dcpu_fifo *fifo, dcpu_word *item)
+{
+	if (!fifo->used)
+		return false;
+
+	*item = fifo->elements[fifo->tail];
 	return true;
 }
 
