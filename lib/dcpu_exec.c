@@ -338,12 +338,14 @@ DCPU_ISN_HANDLER(INT)
 DCPU_ISN_HANDLER(IAG)
 {
 	*a = vcpu->st.sr.ia;
+	return 0;
 }
 
 // sets IA to a
 DCPU_ISN_HANDLER(IAS)
 {
 	vcpu->st.sr.ia = *a;
+	return 0;
 }
 
 // disables interrupt queueing, pops A from the stack, then pops PC from the stack
