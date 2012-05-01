@@ -11,12 +11,40 @@
 #include "dcpu_util.h"
 #include "dcpu_generator.h"
 #include "dcpu_colours.h"
+#include "dcpu_debugger.h"
 
 #if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
 #else
 #define dbg(f,a...) printf(f,##a)
 #endif
+
+// ------------------------------------------------------------------------
+// debugger
+
+#define DEFINE_DEBUGGER_WRAPPER(callback)                          \
+static inline int dcpu_debugger_##callback(struct dcpu_vcpu *vcpu) \
+{                                                                  \
+	if (vcpu->debugger)                                        \
+		return vcpu->debugger->callback(vcpu);             \
+	return 0;                                                  \
+}
+
+DEFINE_DEBUGGER_WRAPPER(start);
+DEFINE_DEBUGGER_WRAPPER(post_isn);
+DEFINE_DEBUGGER_WRAPPER(post_int);
+DEFINE_DEBUGGER_WRAPPER(halt);
+DEFINE_DEBUGGER_WRAPPER(exit);
+
+void dcpu_vcpu_set_debugger(struct dcpu_vcpu *vcpu,
+		struct dcpu_debugger *debugger)
+{
+	vcpu->debugger = debugger;
+}
+
+
+// ------------------------------------------------------------------------
+// instruction decoder
 
 static dcpu_word * dcpu_vcpu_get_isn_arg(struct dcpu_vcpu *vcpu,
 		dcpu_word arg_desc, dcpu_word *scratch, int is_b)
@@ -78,15 +106,11 @@ static dcpu_word * dcpu_vcpu_get_isn_arg(struct dcpu_vcpu *vcpu,
 	}
 }
 
-static inline int dcpu_vcpu_debug_callback(struct dcpu_vcpu *vcpu, int what)
-{
-	int rc = 0;
-
-	if (vcpu->debug_callback)
-		rc = vcpu->debug_callback(vcpu, what);
-
-	return rc;
-}
+#define dcpu_vcpu_debug_callback(vcpu,cb) ({                        \
+		int rc = 0;                                         \
+		if ( (vcpu)->debugger )                             \
+		        rc = (vcpu)->debugger->cb(vcpu);            \
+		rc; })
 
 static int dcpu_vcpu_handle_interrupts(struct dcpu_vcpu *vcpu)
 {
@@ -113,7 +137,7 @@ static int dcpu_vcpu_handle_interrupts(struct dcpu_vcpu *vcpu)
 	vcpu->st.sr.pc = vcpu->st.sr.ia;
 	vcpu->st.gr.a = msg;
 
-	rc = dcpu_vcpu_debug_callback(vcpu, DCPU_VCPU_DEBUG_INTERRUPT);
+	rc = dcpu_debugger_post_int(vcpu);
 
 	return rc;
 }
@@ -172,7 +196,7 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 		vcpu->st.skipping = 0;
 	}
 
-	rc = dcpu_vcpu_debug_callback(vcpu, DCPU_VCPU_DEBUG_ISN_DONE);
+	rc = dcpu_debugger_post_isn(vcpu);
 	if (rc)
 		return rc;
 
@@ -188,20 +212,24 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 
 static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
 {
-	int rc;
+	int rc = 0;
 
 	// initialize
-	dcpu_vcpu_debug_callback(vcpu, DCPU_VCPU_DEBUG_INIT);
+	dcpu_debugger_start(vcpu);
 
 	for(;;) {
 		rc = vcpu->ops.step(vcpu);
 		if (rc<0)
-			return rc;
+			break;
 	}
+
+	dcpu_debugger_halt(vcpu);
+	return rc;
 }
 
 static void dcpu_vcpu_delete (struct dcpu_vcpu *vcpu)
 {
+	dcpu_debugger_exit(vcpu);
 	free(vcpu);
 }
 

@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 
 	pr->ops.delete(pr);
 
-	dcpu_vcpu_set_debug(vcpu, tracer_debug_callback);
+	dcpu_vcpu_set_debugger(vcpu, &tracing_debugger);
 	
 	dcpu_add_clock(vcpu);
 	dcpu_add_keyboard(vcpu);

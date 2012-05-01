@@ -29,11 +29,26 @@ static void dump_oneline(struct dcpu_vcpu *vcpu,
 	dcpu_generate_asm(asm_buf, sizeof(asm_buf),
 			dcpu_vcpu_current_op(vcpu));
 
+	// macro to colourize a register
 #define Dr(reg) \
-	(!old)                    ? CLR(N,WHITE) : \
-	(vcpu->st.reg < old->reg) ? CLR(B,RED) : \
-	(vcpu->st.reg > old->reg) ? CLR(B,GREEN) : \
-				    CLR(N,WHITE), \
+	/* colour first */                          \
+	(!old)                    ? CLR(N,WHITE) :  \
+	(vcpu->st.reg < old->reg) ? CLR(B,RED) :    \
+	(vcpu->st.reg > old->reg) ? CLR(B,GREEN) :  \
+				    CLR(N,WHITE),   \
+	/* then the register value */               \
+	vcpu->st.reg
+
+	// another macro to colourize PC and IA, when they match
+#define Ddup(reg, reg2) \
+	/* colour first */                          \
+	(vcpu->st.reg2 && vcpu->st.reg == vcpu->st.reg2) \
+	                          ? CLR(B,YELLOW) : \
+	(!old)                    ? CLR(N,WHITE) :  \
+	(vcpu->st.reg < old->reg) ? CLR(B,RED) :    \
+	(vcpu->st.reg > old->reg) ? CLR(B,GREEN) :  \
+				    CLR(N,WHITE),   \
+	/* then the register value */               \
 	vcpu->st.reg
 
 	fprintf(out, DUMP_FMT,
@@ -47,42 +62,63 @@ static void dump_oneline(struct dcpu_vcpu *vcpu,
 			Dr(gr.z),
 			Dr(gr.i),
 			Dr(gr.j),
-			Dr(sr.pc),
+			Ddup(sr.pc, sr.ia),
 			Dr(sr.sp),
 			Dr(sr.ex),
-			Dr(sr.ia),
+			Ddup(sr.ia, sr.pc),
 			vcpu->st.skipping ? "sk" : "  ",
 			hex_buf, asm_buf);
 }
 
 
-int tracer_debug_callback(struct dcpu_vcpu *vcpu, int what)
+static struct dcpu_vcpu_state tracing_debugger_state = {0,};
+
+// first call before program starts executing
+static int dcpu_tracer_start(struct dcpu_vcpu *vcpu)
 {
-	static struct dcpu_vcpu_state old = {0,};
+	dump_header(stdout);
+	dump_oneline(vcpu, &tracing_debugger_state, stdout);
+	dcpu_vcpu_backup_state(vcpu, &tracing_debugger_state);
 
-	if (!vcpu)
-		return -EFAULT;
-
-	switch (what) {
-	case DCPU_VCPU_DEBUG_INIT:
-		dump_header(stdout);
-		dump_oneline(vcpu, &old, stdout);
-		break;
-
-	case DCPU_VCPU_DEBUG_ISN_DONE:
-	case DCPU_VCPU_DEBUG_INTERRUPT:
-		dump_oneline(vcpu, &old, stdout);
-
-		// if there is no hardware, and the PC didn't change, there is no hope
-		if (old.sr.pc == vcpu->st.sr.pc && !vcpu->hw_count) {
-			warn("PC didn't change, bailing out.");
-			return -ENODEV;
-		}
-
-		break;
-	}
-
-	dcpu_vcpu_backup_state(vcpu, &old);
 	return 0;
 }
+
+// handle change
+static int dcpu_tracer_anything(struct dcpu_vcpu *vcpu)
+{
+	dump_oneline(vcpu, &tracing_debugger_state, stdout);
+
+	// if there is no hardware, and the PC didn't change, there is no hope
+	if (tracing_debugger_state.sr.pc == vcpu->st.sr.pc && !vcpu->hw_count) {
+		warn("PC didn't change, bailing out.");
+		return -ENODEV;
+	}
+
+	dcpu_vcpu_backup_state(vcpu, &tracing_debugger_state);
+
+	return 0;
+}
+
+// vcpu execution halted
+static int dcpu_tracer_halt(struct dcpu_vcpu *vcpu)
+{
+	dump_header(stdout);
+	return 0;
+}
+
+// all done
+static int dcpu_tracer_exit(struct dcpu_vcpu *vcpu)
+{
+	// ignore
+	return 0;
+}
+
+
+struct dcpu_debugger tracing_debugger = {
+	.start = dcpu_tracer_start,
+	.post_isn = dcpu_tracer_anything,
+	.post_int = dcpu_tracer_anything,
+	.halt = dcpu_tracer_halt,
+	.exit = dcpu_tracer_exit,
+};
 
