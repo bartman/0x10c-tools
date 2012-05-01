@@ -3,7 +3,6 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include <curses.h>
 
 #include "dcpu_op.h"
 #include "dcpu_isn.h"
@@ -13,29 +12,7 @@
 #include "dcpu_clock.h"
 #include "dcpu_keyboard.h"
 #include "dcpu_tracer.h"
-
-void curses_stop(void)
-{
-	echo();
-	endwin();
-}
-
-void curses_start(void)
-{
-	initscr();
-
-	atexit(curses_stop);
-
-	if (has_colors()) {
-		start_color();
-		use_default_colors();
-	}
-	cbreak();
-	noecho();
-
-	erase();
-	refresh();
-}
+#include "dcpu_curses.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,8 +25,6 @@ int main(int argc, char *argv[])
 	if (!filename)
 		die("need a filename");
 
-	//curses_start();
-
 	vcpu = dcpu_vcpu_new();
 
 	pr = dcpu_parser_new(filename, vcpu->ram, DCPU_RAM_WORDS);
@@ -60,7 +35,8 @@ int main(int argc, char *argv[])
 
 	pr->ops.delete(pr);
 
-	dcpu_vcpu_set_debugger(vcpu, &tracing_debugger);
+	//dcpu_vcpu_set_debugger(vcpu, &tracing_debugger);
+	dcpu_vcpu_set_debugger(vcpu, &curses_debugger);
 	
 	dcpu_add_clock(vcpu);
 	dcpu_add_keyboard(vcpu);
