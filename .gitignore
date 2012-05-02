@@ -8,4 +8,4 @@ tags
 cscope.files
 cscope.out
 Makefile.conf
-src/dcpu
+src/dcpu-vm
