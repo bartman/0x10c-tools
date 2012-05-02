@@ -1,9 +1,36 @@
 #include <stdio.h>
 #include <errno.h>
-#include "dcpu_tracer.h"
+#include <curses.h>
+
+#include "dcpu_vm_curses.h"
 #include "dcpu_vcpu.h"
 #include "dcpu_generator.h"
 #include "dcpu_colours.h"
+
+static void curses_stop(void)
+{
+	echo();
+	endwin();
+}
+
+static void curses_start(void)
+{
+	initscr();
+
+	atexit(curses_stop);
+
+	if (has_colors()) {
+		start_color();
+		use_default_colors();
+	}
+	cbreak();
+	noecho();
+
+	erase();
+	refresh();
+}
+
+
 
 #define DUMP_HDR "TIME(d)  ---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
 #define Ft  RSTCLR     "%04x" CLR(B,BLACK) "(" CLR(N,GREEN) "%d" CLR(B,BLACK) ")"
@@ -71,54 +98,55 @@ static void dump_oneline(struct dcpu_vcpu *vcpu,
 }
 
 
-static struct dcpu_vcpu_state tracing_debugger_state = {0,};
+static struct dcpu_vcpu_state curses_debugger_state = {0,};
 
 // first call before program starts executing
-static int dcpu_tracer_start(struct dcpu_vcpu *vcpu)
+static int dcpu_curses_start(struct dcpu_vcpu *vcpu)
 {
+	curses_start();
 	dump_header(stdout);
-	dump_oneline(vcpu, &tracing_debugger_state, stdout);
-	dcpu_vcpu_backup_state(vcpu, &tracing_debugger_state);
+	dump_oneline(vcpu, &curses_debugger_state, stdout);
+	dcpu_vcpu_backup_state(vcpu, &curses_debugger_state);
 
 	return 0;
 }
 
 // handle change
-static int dcpu_tracer_anything(struct dcpu_vcpu *vcpu)
+static int dcpu_curses_anything(struct dcpu_vcpu *vcpu)
 {
-	dump_oneline(vcpu, &tracing_debugger_state, stdout);
+	dump_oneline(vcpu, &curses_debugger_state, stdout);
 
 	// if there is no hardware, and the PC didn't change, there is no hope
-	if (tracing_debugger_state.sr.pc == vcpu->st.sr.pc && !vcpu->hw_count) {
+	if (curses_debugger_state.sr.pc == vcpu->st.sr.pc && !vcpu->hw_count) {
 		warn("PC didn't change, bailing out.");
 		return -ENODEV;
 	}
 
-	dcpu_vcpu_backup_state(vcpu, &tracing_debugger_state);
+	dcpu_vcpu_backup_state(vcpu, &curses_debugger_state);
 
 	return 0;
 }
 
 // vcpu execution halted
-static int dcpu_tracer_halt(struct dcpu_vcpu *vcpu)
+static int dcpu_curses_halt(struct dcpu_vcpu *vcpu)
 {
 	dump_header(stdout);
 	return 0;
 }
 
 // all done
-static int dcpu_tracer_exit(struct dcpu_vcpu *vcpu)
+static int dcpu_curses_exit(struct dcpu_vcpu *vcpu)
 {
 	// ignore
 	return 0;
 }
 
 
-struct dcpu_debugger tracing_debugger = {
-	.start = dcpu_tracer_start,
-	.post_isn = dcpu_tracer_anything,
-	.post_int = dcpu_tracer_anything,
-	.halt = dcpu_tracer_halt,
-	.exit = dcpu_tracer_exit,
+struct dcpu_debugger curses_debugger = {
+	.start = dcpu_curses_start,
+	.post_isn = dcpu_curses_anything,
+	.post_int = dcpu_curses_anything,
+	.halt = dcpu_curses_halt,
+	.exit = dcpu_curses_exit,
 };
 

@@ -1,5 +1,5 @@
-TARGET = dcpu
-SRCS   = dcpu.c dcpu_tracer.c dcpu_curses.c
+TARGET = dcpu-vm
+SRCS   = dcpu_vm.c dcpu_vm_tracer.c dcpu_vm_curses.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 

@@ -11,8 +11,8 @@
 #include "dcpu_util.h"
 #include "dcpu_clock.h"
 #include "dcpu_keyboard.h"
-#include "dcpu_tracer.h"
-#include "dcpu_curses.h"
+#include "dcpu_vm_tracer.h"
+#include "dcpu_vm_curses.h"
 
 int main(int argc, char *argv[])
 {
