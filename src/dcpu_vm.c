@@ -15,6 +15,39 @@
 #include "dcpu_vm_tracer.h"
 #include "dcpu_vm_curses.h"
 
+static struct dcpu_vcpu *dcpu_vm_create_vcpu(void)
+{
+	struct dcpu_vcpu *vcpu;
+
+	vcpu = dcpu_vcpu_new();
+
+	if (dcpu_vm_opts.assembly_file) {
+		struct dcpu_parser *pr;
+
+		pr = dcpu_parser_new(dcpu_vm_opts.assembly_file,
+				vcpu->ram, DCPU_RAM_WORDS);
+		pr->ops.parse_file(pr, dcpu_vm_opts.assembly_file);
+		//pr->ops.dump(pr, stdout);
+		pr->ops.delete(pr);
+
+	} else if (dcpu_vm_opts.binary_file) {
+
+	} else if (dcpu_vm_opts.snapshot_file) {
+
+	}
+
+	// add some hardware
+	dcpu_add_clock(vcpu);
+	dcpu_add_keyboard(vcpu);
+	dcpu_add_lem1802(vcpu);
+
+	// add debugger
+	dcpu_vcpu_set_debugger(vcpu, dcpu_vm_opts.debugger);
+
+	return vcpu;
+}
+
+
 int main(int argc, char *argv[])
 {
 	const char *filename;
@@ -24,26 +57,7 @@ int main(int argc, char *argv[])
 
 	dcpu_vm_parse_cmdline(argc, argv);
 
-	filename = argv[1];
-	if (!filename)
-		die("need a filename");
-
-	vcpu = dcpu_vcpu_new();
-
-	pr = dcpu_parser_new(filename, vcpu->ram, DCPU_RAM_WORDS);
-
-	pr->ops.parse_file(pr, filename);
-
-	//pr->ops.dump(pr, stdout);
-
-	pr->ops.delete(pr);
-
-	//dcpu_vcpu_set_debugger(vcpu, &tracing_debugger);
-	dcpu_vcpu_set_debugger(vcpu, &curses_debugger);
-	
-	dcpu_add_clock(vcpu);
-	dcpu_add_keyboard(vcpu);
-	dcpu_add_lem1802(vcpu);
+	vcpu = dcpu_vm_create_vcpu();
 
 	rc = vcpu->ops.run(vcpu);
 

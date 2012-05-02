@@ -10,6 +10,7 @@
 
 #include "dcpu_util.h"
 
+#include "dcpu_vm_util.h"
 #include "dcpu_vm_opts.h"
 #include "dcpu_vm_tracer.h"
 #include "dcpu_vm_curses.h"
@@ -63,6 +64,7 @@ static struct option long_options[] = {
 void dcpu_vm_parse_cmdline(int argc, char *argv[])
 {
 	int c;
+	int source_files = 0;
 
 	progname_full = argv[0];
 	progname_base = basename(strdup(argv[0]));
@@ -71,7 +73,8 @@ void dcpu_vm_parse_cmdline(int argc, char *argv[])
 	for(;;) {
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "hdta:b:s:", long_options, &option_index);
+		c = getopt_long(argc, argv, "hdta:b:s:",
+				long_options, &option_index);
 		if (c == -1)
 			break;
 
@@ -89,15 +92,21 @@ void dcpu_vm_parse_cmdline(int argc, char *argv[])
 			break;
 
 		case 'a':
+			assert_file_is_legible("assembly file", optarg);
 			dcpu_vm_opts.assembly_file = optarg;
+			source_files ++;
 			break;
 
 		case 'b':
+			assert_file_is_legible("binary file", optarg);
 			dcpu_vm_opts.binary_file = optarg;
+			source_files ++;
 			break;
 
 		case 's':
+			assert_file_is_legible("snapshot file", optarg);
 			dcpu_vm_opts.snapshot_file = optarg;
+			source_files ++;
 			break;
 
 		case '?':
@@ -107,4 +116,11 @@ void dcpu_vm_parse_cmdline(int argc, char *argv[])
 			die("unknown option '%c' (0x%0x)", c, c);
 		}
 	}
+
+	if (source_files > 1)
+		die("only one of --assemble --binary --snapshot can be specified, "
+				"see --help");
+	if (source_files < 1)
+		die("need to specify a source file using --assemble --binary or --snapshot, "
+				"see --help");
 }

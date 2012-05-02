@@ -1,5 +1,5 @@
 TARGET = dcpu-vm
-SRCS   = dcpu_vm.c dcpu_vm_opts.c dcpu_vm_tracer.c dcpu_vm_curses.c
+SRCS   = dcpu_vm.c dcpu_vm_opts.c dcpu_vm_util.c dcpu_vm_tracer.c dcpu_vm_curses.c
 OBJS   = ${SRCS:.c=.o}
 DEPS   = $(SRCS:%=.%.dep)
 
