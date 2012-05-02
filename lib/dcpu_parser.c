@@ -40,7 +40,7 @@ static int dcpu_parser_parse_file(struct dcpu_parser *pr, const char *filename)
 	int rc;
 	char buf[4096];
 	char *str;
-	int tmp;
+	char tmp;
 	char *tok_file, *tok_line, *tok_ofs, *tok_isn;
 	FILE *in;
 	struct dcpu_parsed_line *pl;
@@ -94,8 +94,6 @@ static int dcpu_parser_parse_file(struct dcpu_parser *pr, const char *filename)
 
 		list_add_tail(&pl->link, &pr->parsed_lines);
 	}
-
-bail:
 
 	return pclose(in);
 }
@@ -163,8 +161,10 @@ static void dcpu_parser_dump(struct dcpu_parser *pr, FILE *out)
 static void dcpu_parser_delete(struct dcpu_parser *pr)
 {
 	struct dcpu_parsed_line *pl, *pl_next;
+#if 0
 	struct dcpu_parser_label *lab, *lab_next;
 	struct dcpu_parser_unresolved *ur, *ur_next;
+#endif
 
 	list_for_each_entry_safe(pl, pl_next, &pr->parsed_lines, link) {
 		list_del(&pl->link);
@@ -192,7 +192,6 @@ struct dcpu_parser * dcpu_parser_new(const char *file,
 		dcpu_word *ram, unsigned ram_words)
 {
 	struct dcpu_parser *pr;
-	int rc;
 
 	pr = calloc(1, sizeof(*pr));
 

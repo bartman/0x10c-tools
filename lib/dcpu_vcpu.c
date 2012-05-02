@@ -226,7 +226,7 @@ struct dcpu_vcpu * dcpu_vcpu_new(void)
 
 	vcpu->hz = DCPU_HZ;
 
-	vcpu->hw_count;
+	vcpu->hw_count = 0;
 	list_init(&vcpu->hw_list);
 
 	vcpu->ops = dcpu_vcpu_ops;

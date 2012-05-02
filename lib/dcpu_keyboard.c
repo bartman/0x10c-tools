@@ -53,8 +53,8 @@ int dcpu_add_keyboard(struct dcpu_vcpu *vcpu)
 static int dcpu_keyboard_poke (struct dcpu_hw *hw)
 {
 	struct dcpu_keyboard *kbd = dcpu_hw_to_keyboard(hw);
-	struct dcpu_vcpu *vcpu = kbd->hw.vcpu;
-	dcpu_word key;
+	//struct dcpu_vcpu *vcpu = kbd->hw.vcpu;
+	dcpu_word key = 0;
 
 	//key = getchar();
 	dcpu_fifo_put(&kbd->buffer, key);

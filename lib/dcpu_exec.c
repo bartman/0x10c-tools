@@ -11,7 +11,7 @@ DCPU_ISN_HANDLER(SET)
 {
 	uint16_t A = *a;
 
-	*b = *a;
+	*b = A;
 
 	return 0;
 }
@@ -386,7 +386,6 @@ DCPU_ISN_HANDLER(HWQ)
 {
 	dcpu_word hw_id;
 	struct dcpu_hw *hw;
-	int rc;
 
 	hw_id = *a;
 	hw = dcpu_vcpu_find_hw(vcpu, hw_id);
@@ -412,7 +411,6 @@ DCPU_ISN_HANDLER(HWI)
 {
 	dcpu_word hw_id;
 	struct dcpu_hw *hw;
-	int rc;
 
 	hw_id = *a;
 	hw = dcpu_vcpu_find_hw(vcpu, hw_id);
