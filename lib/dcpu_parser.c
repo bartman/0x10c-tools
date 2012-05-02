@@ -87,10 +87,10 @@ static int dcpu_parser_parse_file(struct dcpu_parser *pr, const char *filename)
 		if (pl->word_count > (pr->ram_words - pr->ram_used))
 			die("overflowed memory");
 
-		memcpy(pr->ram + pr->ram_used, pl->op.word,
+		memcpy(pr->ram + pl->word_offset, pl->op.word,
 				pl->word_count * sizeof(dcpu_word));
 
-		pr->ram_used += pl->word_count;
+		pr->ram_used = pl->word_offset + pl->word_count;
 
 		list_add_tail(&pl->link, &pr->parsed_lines);
 	}
