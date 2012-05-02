@@ -226,10 +226,15 @@ function DA.new()
         end
         local function handle_data(block)
                 dbgf(1, "pc=0x%04x data '%s'", s.pc, DataDumper(block.data, ""))
+
+                block.length = 0
+                block.offset = s.pc
+
                 for i,datum in ipairs(block.data) do
                         dbgf(1, "  > %s", DataDumper(datum, ""))
                         if datum.num then
                                 s:mem_append(datum.num)
+                                --s:mem_append(tonumber(datum.num))
                         elseif datum.str then
                                 local bytes = { string.byte(datum.str,1,datum.str:len()) }
                                 for i,byte in ipairs(bytes) do
@@ -239,6 +244,8 @@ function DA.new()
                                 die(DataDumper(datum, "don't know how to handle data: "))
                         end
                 end
+
+                block.length = s.pc - block.offset
         end
         local function handle_op(block)
                 dbgf(1, "pc=0x%04x op '%s'", s.pc, DataDumper({block.op,block.b,block.a}, ""))
@@ -280,6 +287,7 @@ function DA.new()
                 for i,block in ipairs(prog) do
                         if block.finalize then
                                 block:finalize()
+                                block.finalize = nil
                         end
                 end
                 table.insert(s.programs, prog)
