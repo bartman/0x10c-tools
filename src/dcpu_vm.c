@@ -11,6 +11,7 @@
 #include "dcpu_util.h"
 #include "dcpu_clock.h"
 #include "dcpu_keyboard.h"
+#include "dcpu_vm_opts.h"
 #include "dcpu_vm_tracer.h"
 #include "dcpu_vm_curses.h"
 
@@ -20,6 +21,8 @@ int main(int argc, char *argv[])
 	struct dcpu_parser *pr;
 	struct dcpu_vcpu *vcpu;
 	int rc;
+
+	dcpu_vm_parse_cmdline(argc, argv);
 
 	filename = argv[1];
 	if (!filename)
