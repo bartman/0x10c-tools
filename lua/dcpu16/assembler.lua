@@ -98,22 +98,21 @@ function DA.new()
 
                 if arg.greg then
                         dbg(3,"", "greg", arg.greg)
-
-                        local gr = DD.generic_registers[arg.greg]
+                        local gr = DD.generic_registers[string.upper(arg.greg)]
                         if not gr then
-                                die("don't know how to encode reg '"..(arg.greg).."'")
+                                die("don't know how to encode reg '"..(arg.greg).."' on line "..tostring(isn.line))
                         end
                         num = gr.num
 
                 elseif arg.sreg then
                         dbg(3,"", "sreg", arg.sreg)
 
-                        local sr = DD.special_registers[arg.sreg]
+                        local sr = DD.special_registers[string.upper(arg.sreg)]
                         if not sr then
-                                die("don't know how to encode reg '"..(arg.sreg).."'")
+                                die("don't know how to encode reg '"..(arg.sreg).."' on line "..tostring(isn.line))
                         end
                         if not sr[AorB] then
-                                die("special register '"..(arg.sreg).."' not allowed as '"..(AorB).."'")
+                                die("special register '"..(arg.sreg).."' not allowed as '"..(AorB).."' on line "..tostring(isn.line))
                         end
                         num = sr.num
 
@@ -139,17 +138,17 @@ function DA.new()
                 elseif arg.mref then
                         local reg = nil
                         if arg.mref.greg then
-                                reg = DD.generic_registers[arg.mref.greg]
+                                reg = DD.generic_registers[string.upper(arg.mref.greg)]
                                 if not reg then
-                                        die("don't know how to encode reg '"..(arg.mref.greg).."' of "..DataDumper(arg,""))
+                                        die("don't know how to encode reg '"..(arg.mref.greg).."' on line "..tostring(isn.line))
                                 end
                         elseif arg.mref.sreg then
-                                reg = DD.special_registers[arg.mref.sreg]
+                                reg = DD.special_registers[string.upper(arg.mref.sreg)]
                                 if not reg then
-                                        die("don't know how to encode reg '"..(arg.mref.sreg).."' of "..DataDumper(arg,""))
+                                        die("don't know how to encode reg '"..(arg.mref.sreg).."' on line "..tostring(isn.line))
                                 end
                                 if not reg.mref then
-                                        die("cannot use register '"..(arg.mref.sreg).."' in memory reference,  "..DataDumper(arg,""))
+                                        die("cannot use register '"..(arg.mref.sreg).."' in memory reference, on line "..tostring(isn.line))
                                 end
                         end
 
