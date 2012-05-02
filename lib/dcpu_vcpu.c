@@ -11,7 +11,6 @@
 #include "dcpu_util.h"
 #include "dcpu_generator.h"
 #include "dcpu_colours.h"
-#include "dcpu_debugger.h"
 
 #if 1
 #define dbg(f,a...) do { /* nothing */ } while(0)
@@ -20,26 +19,23 @@
 #endif
 
 // ------------------------------------------------------------------------
-// debugger
+// debug ops
 
 #define DEFINE_DEBUGGER_WRAPPER(callback)                          \
 static inline int dcpu_debugger_##callback(struct dcpu_vcpu *vcpu) \
 {                                                                  \
-	if (vcpu->debugger)                                        \
-		return vcpu->debugger->callback(vcpu);             \
+	if (vcpu->debug_ops)                                       \
+		return vcpu->debug_ops->callback(vcpu);            \
 	return 0;                                                  \
 }
 
-DEFINE_DEBUGGER_WRAPPER(start);
 DEFINE_DEBUGGER_WRAPPER(post_isn);
 DEFINE_DEBUGGER_WRAPPER(post_int);
-DEFINE_DEBUGGER_WRAPPER(halt);
-DEFINE_DEBUGGER_WRAPPER(exit);
 
-void dcpu_vcpu_set_debugger(struct dcpu_vcpu *vcpu,
-		struct dcpu_debugger *debugger)
+void dcpu_vcpu_set_debug_ops(struct dcpu_vcpu *vcpu,
+		struct dcpu_vcpu_debug_ops *debug_ops)
 {
-	vcpu->debugger = debugger;
+	vcpu->debug_ops = debug_ops;
 }
 
 
@@ -210,32 +206,13 @@ static int dcpu_vcpu_step (struct dcpu_vcpu *vcpu)
 	return 0;
 }
 
-static int dcpu_vcpu_run (struct dcpu_vcpu *vcpu)
-{
-	int rc = 0;
-
-	// initialize
-	dcpu_debugger_start(vcpu);
-
-	for(;;) {
-		rc = vcpu->ops.step(vcpu);
-		if (rc<0)
-			break;
-	}
-
-	dcpu_debugger_halt(vcpu);
-	return rc;
-}
-
 static void dcpu_vcpu_delete (struct dcpu_vcpu *vcpu)
 {
-	dcpu_debugger_exit(vcpu);
 	free(vcpu);
 }
 
 static struct dcpu_vcpu_ops dcpu_vcpu_ops = {
 	.step   = dcpu_vcpu_step,
-	.run    = dcpu_vcpu_run,
 	.delete = dcpu_vcpu_delete,
 };
 

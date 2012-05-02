@@ -3,7 +3,7 @@
 
 #define DCPU_VM_PROGNAME "dcpu-vm"
 
-struct dcpu_debugger;
+struct dcpu_vm_debugger;
 
 extern const char *progname_full;
 extern const char *progname_base;
@@ -11,7 +11,7 @@ extern const char *progname_dir;
 
 struct dcpu_vm_opts {
 	// which debugger to use
-	struct dcpu_debugger *debugger;
+	struct dcpu_vm_debugger *debugger;
 
 	// what to execute
 	const char *assembly_file;

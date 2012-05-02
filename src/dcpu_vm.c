@@ -11,6 +11,7 @@
 #include "dcpu_util.h"
 #include "dcpu_clock.h"
 #include "dcpu_keyboard.h"
+#include "dcpu_lem1802.h"
 #include "dcpu_vm_opts.h"
 #include "dcpu_vm_tracer.h"
 #include "dcpu_vm_curses.h"
@@ -41,17 +42,12 @@ static struct dcpu_vcpu *dcpu_vm_create_vcpu(void)
 	dcpu_add_keyboard(vcpu);
 	dcpu_add_lem1802(vcpu);
 
-	// add debugger
-	dcpu_vcpu_set_debugger(vcpu, dcpu_vm_opts.debugger);
-
 	return vcpu;
 }
 
 
 int main(int argc, char *argv[])
 {
-	const char *filename;
-	struct dcpu_parser *pr;
 	struct dcpu_vcpu *vcpu;
 	int rc;
 
@@ -59,7 +55,11 @@ int main(int argc, char *argv[])
 
 	vcpu = dcpu_vm_create_vcpu();
 
-	rc = vcpu->ops.run(vcpu);
+	dcpu_vm_opts.debugger->add_vcpu(vcpu);
+
+	rc = dcpu_vm_opts.debugger->start();
+
+	vcpu->ops.delete(vcpu);
 
 	return rc;
 }

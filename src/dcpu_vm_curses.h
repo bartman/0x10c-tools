@@ -1,8 +1,8 @@
 #ifndef __included_dcpu_vm_curses_h__
 #define __included_dcpu_vm_curses_h__
 
-#include "dcpu_debugger.h"
+#include "dcpu_vm_debugger.h"
 
-extern struct dcpu_debugger curses_debugger;
+extern struct dcpu_vm_debugger curses_debugger;
 
 #endif // __included_dcpu_vm_curses_h__

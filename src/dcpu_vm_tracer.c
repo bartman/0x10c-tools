@@ -2,11 +2,12 @@
 #include <errno.h>
 #include "dcpu_vm_tracer.h"
 #include "dcpu_vcpu.h"
+#include "dcpu_util.h"
 #include "dcpu_generator.h"
 #include "dcpu_colours.h"
 
 #define DUMP_HDR "TIME(d)  ---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
-#define Ft  RSTCLR     "%04x" CLR(B,BLACK) "(" CLR(N,GREEN) "%d" CLR(B,BLACK) ")"
+#define Ft  RSTCLR     "%04x" CLR(B,BLACK) "(" CLR(N,GREEN) "%ld" CLR(B,BLACK) ")"
 #define Fr  "%s"       "%04x" RSTCLR
 #define Fsk CLR(B,RED) "%s"   RSTCLR
 #define DUMP_FMT Ft"  "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr"   "Fr" "Fr" "Fr" "Fr"  "Fsk RSTCLR "  %-15s %s\n"
@@ -73,16 +74,6 @@ static void dump_oneline(struct dcpu_vcpu *vcpu,
 
 static struct dcpu_vcpu_state tracing_debugger_state = {0,};
 
-// first call before program starts executing
-static int dcpu_tracer_start(struct dcpu_vcpu *vcpu)
-{
-	dump_header(stdout);
-	dump_oneline(vcpu, &tracing_debugger_state, stdout);
-	dcpu_vcpu_backup_state(vcpu, &tracing_debugger_state);
-
-	return 0;
-}
-
 // handle change
 static int dcpu_tracer_anything(struct dcpu_vcpu *vcpu)
 {
@@ -99,26 +90,53 @@ static int dcpu_tracer_anything(struct dcpu_vcpu *vcpu)
 	return 0;
 }
 
-// vcpu execution halted
-static int dcpu_tracer_halt(struct dcpu_vcpu *vcpu)
-{
-	dump_header(stdout);
-	return 0;
-}
-
-// all done
-static int dcpu_tracer_exit(struct dcpu_vcpu *vcpu)
-{
-	// ignore
-	return 0;
-}
-
-
-struct dcpu_debugger tracing_debugger = {
-	.start = dcpu_tracer_start,
+static struct dcpu_vcpu_debug_ops tracing_ops = {
 	.post_isn = dcpu_tracer_anything,
 	.post_int = dcpu_tracer_anything,
-	.halt = dcpu_tracer_halt,
-	.exit = dcpu_tracer_exit,
 };
 
+// ------------------------------------------------------------------------
+// debugger interface
+
+static struct dcpu_vcpu *tracer_vcpu = NULL;
+
+static void tracer_add_vcpu(struct dcpu_vcpu *vcpu)
+{
+	if (tracer_vcpu)
+		die("tracer only supports a single dcpu");
+
+	dcpu_vcpu_set_debug_ops(vcpu, &tracing_ops);
+
+	tracer_vcpu = vcpu;
+}
+
+static int tracer_start(void)
+{
+	int rc = 0;
+	struct dcpu_vcpu *vcpu = tracer_vcpu;
+
+	if (!vcpu)
+		die("need to specify dcpu to trace");
+
+	dump_header(stdout);
+	dump_oneline(vcpu, &tracing_debugger_state, stdout);
+	dcpu_vcpu_backup_state(vcpu, &tracing_debugger_state);
+
+	while(!vcpu->st.halted) {
+		rc = vcpu->ops.step(vcpu);
+		if (rc<0)
+			break;
+	}
+
+	dump_header(stdout);
+
+	if (vcpu->st.halted)
+		return vcpu->st.hcf_code;
+
+	return rc;
+}
+
+struct dcpu_vm_debugger tracing_debugger = {
+	.add_vcpu = tracer_add_vcpu,
+	.start = tracer_start,
+};

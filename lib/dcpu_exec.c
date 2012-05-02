@@ -322,6 +322,8 @@ DCPU_ISN_HANDLER(JSR)
 
 DCPU_ISN_HANDLER(HCF)
 {
+	vcpu->st.halted = 1;
+	vcpu->st.hcf_code = *a;
 	warn("HCF reached");
 	return -EFAULT;
 }

@@ -11,15 +11,22 @@
 struct dcpu_vcpu;
 struct dcpu_vcpu_state;
 struct dcpu_hw;
-struct dcpu_debugger;
 
 struct dcpu_vcpu_ops {
 
 	int (*step) (struct dcpu_vcpu *vcpu);
 
-	int (*run) (struct dcpu_vcpu *vcpu);
-
 	void (*delete) (struct dcpu_vcpu *vcpu);
+
+};
+
+struct dcpu_vcpu_debug_ops {
+
+	// instruction executed
+	int (*post_isn)(struct dcpu_vcpu *);
+
+	// interrupt changed PC
+	int (*post_int)(struct dcpu_vcpu *);
 
 };
 
@@ -40,8 +47,11 @@ struct dcpu_vcpu {
 			};
 		} sr;
 
+		dcpu_word hcf_code;
+
 		unsigned skipping:1; // skipping IFx instructions + one non-IFx
 		unsigned int_mask:1; // when set interrupts don't trigger
+		unsigned halted:1;   // set when HCF was issued, hcf_code is set
 
 	} st;
 
@@ -52,7 +62,7 @@ struct dcpu_vcpu {
 	dcpu_word   hw_count;
 	struct list hw_list;
 
-	struct dcpu_debugger *debugger;
+	struct dcpu_vcpu_debug_ops *debug_ops;
 
 	struct dcpu_vcpu_ops ops;
 
@@ -103,9 +113,9 @@ static inline dcpu_word dcpu_vcpu_pop(struct dcpu_vcpu *vcpu)
 	return vcpu->ram [ vcpu->st.sr.sp++ ];
 }
 
-// assign a debugger, or NULL to reset
-extern void dcpu_vcpu_set_debugger(struct dcpu_vcpu *vcpu,
-		struct dcpu_debugger *dbg);
+// assign a debug ops, or NULL to reset
+extern void dcpu_vcpu_set_debug_ops(struct dcpu_vcpu *vcpu,
+		struct dcpu_vcpu_debug_ops *dbg);
 
 // add and remove a piece of hardware (return 0 on success)
 extern int dcpu_vcpu_register_hw(struct dcpu_vcpu *vcpu, struct dcpu_hw *hw);
