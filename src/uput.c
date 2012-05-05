@@ -1,13 +1,13 @@
 #include <ncurses.h>
 #include <string.h>
 #include <stdbool.h>
-#define MAXIMUMUPUTSTRINGLENGTH 80
-int uput(const int y,const int x,const int length,const int fg,const int bg,char *whole,bool ins,const char *permitted);
-char* rtrim(char* string, char junk);
-void insert(char *, const char*, const int);
+
+#include "uput.h"
+
+#if 0
 int main(void)
 {
-        char whole[MAXIMUMUPUTSTRINGLENGTH];
+        char whole[UPUT_MAX_LENGTH];
         int returnvalue;
         initscr();
         cbreak();
@@ -27,6 +27,8 @@ int main(void)
         endwin();
         return 0;
 }
+#endif
+
 int uput(const int y,const int x,const int length,const int fg,const int bg,char *whole,bool ins,const char *permitted)
 {
 /*
@@ -85,8 +87,8 @@ COLORS WITH BOLD ATTRIBUTE SET (Foreground only)
 6 Light Cyan (DOS Color #11)
 7 High Intensity White (DOS Color #15)
 */
-        int flag = 0, curspos=0,counter, ky;
-        char tempwhole[MAXIMUMUPUTSTRINGLENGTH];
+        int flag = UPUT_EXIT_ENTER, curspos=0,counter, ky;
+        char tempwhole[UPUT_MAX_LENGTH];
         char kystring[2];
         bool exitflag=false;
         kystring[1]='\0';
@@ -160,23 +162,23 @@ COLORS WITH BOLD ATTRIBUTE SET (Foreground only)
                                         }
                                 break;
                         case 10: // enter
-                                flag=0;
+                                flag=UPUT_EXIT_ENTER;
                                 exitflag=true;
                                 break;
                         case KEY_UP: // up-arrow
-                                flag=8;
+                                flag=UPUT_EXIT_UP_ARROW;
                                 exitflag=true;
                                 break;
                         case KEY_DOWN: // down-arrow
-                                flag=2;
+                                flag=UPUT_EXIT_DOWN_ARROW;
                                 exitflag=true;
                                 break;
                         case 9: // tab
-                                flag=6;
+                                flag=UPUT_EXIT_TAB;
                                 exitflag=true;
                                 break;
                         case KEY_BTAB: // shift-tab
-                                flag=4;
+                                flag=UPUT_EXIT_SHIFT_TAB;
                                 exitflag=true;
                                 break;
                         case 27: //esc
@@ -186,7 +188,7 @@ COLORS WITH BOLD ATTRIBUTE SET (Foreground only)
                                 if (ky == 27)
                                         {
                                         strcpy(whole,tempwhole);
-                                        flag=5;
+                                        flag=UPUT_EXIT_ESCAPE;
                                         exitflag=true;
                                         }
                                 else
@@ -236,13 +238,13 @@ char* rtrim(char* string, char junk)
 }
 void insert(char *st, const char *s2, const int location)
 {
-        char temp[MAXIMUMUPUTSTRINGLENGTH];
+        char temp[UPUT_MAX_LENGTH];
         int counter, tempstringlength;
         strncpy(temp,st,location);
         temp[location]='\0';
         strcat(temp,s2);
         tempstringlength=strlen(temp);
-        for (counter=location; st[counter] != '\0' && counter < MAXIMUMUPUTSTRINGLENGTH; counter++, tempstringlength++)
+        for (counter=location; st[counter] != '\0' && counter < UPUT_MAX_LENGTH; counter++, tempstringlength++)
                 temp[tempstringlength]=st[counter];
         temp[tempstringlength]='\0';
         strcpy(st,temp);
