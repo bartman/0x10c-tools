@@ -19,7 +19,7 @@ struct dcpu_hw_ops dcpu_lem1802_ops;
 struct dcpu_lem1802 * dcpu_lem1802_new(void)
 {
 	struct dcpu_lem1802 *lem;
-	WINDOW *win;
+	//WINDOW *win;
 
 	lem = calloc(1, sizeof(*lem));
 
