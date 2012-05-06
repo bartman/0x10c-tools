@@ -8,6 +8,7 @@ typedef uint16_t dcpu_word;
 #define DCPU_MAX_WORD_VALUE 0x10000
 
 #define DCPU_NUM_REGS 0x8
+#define DCPU_NUM_SREGS 4 // pc sp ex ia
 #define DCPU_RAM_WORDS 0x10000
 #define DCPU_MAX_OP_LEN 3
 

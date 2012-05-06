@@ -324,6 +324,9 @@ DCPU_ISN_HANDLER(HCF)
 {
 	vcpu->st.halted = 1;
 	vcpu->st.hcf_code = *a;
+	if ( vcpu->debug_ops && vcpu->debug_ops->halt)
+		return vcpu->debug_ops->halt(vcpu);
+
 	warn("HCF reached");
 	return -EFAULT;
 }

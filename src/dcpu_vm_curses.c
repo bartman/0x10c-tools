@@ -11,7 +11,6 @@
 #include "dcpu_vcpu.h"
 #include "dcpu_util.h"
 #include "dcpu_generator.h"
-#include "dcpu_colours.h"
 
 #include "curses_utils.h"
 
@@ -76,21 +75,32 @@ static void curses_start(void)
 // ------------------------------------------------------------------------
 // scrollable output/tracing window
 
-static void debug_trace_append(struct curses_debugger_state *cds,
+// print the new line in the pad
+static inline void __debug_trace_printf(struct curses_debugger_state *cds,
 		const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vwprintw(cds->trc_pad, fmt, ap);
+	va_end(ap);
+}
+
+static inline void __debug_trace_addstr(struct curses_debugger_state *cds,
+		const char *str)
+{
+	waddstr(cds->trc_pad, str);
+}
+
+// made changes to made visible on the screen
+static void debug_trace_commit(struct curses_debugger_state *cds)
 {
 	int vbegy, vbegx, vmaxy, vmaxx;
 	int pcury;
-	va_list ap;
 
 	// get dimensions of the trace window
 	getbegyx(cds->trc, vbegy, vbegx);
 	getmaxyx(cds->trc, vmaxy, vmaxx);
-
-	// print the new line in the pad
-	va_start(ap, fmt);
-	vwprintw(cds->trc_pad, fmt, ap);
-	va_end(ap);
 
 	// figure out what to show
 	pcury = getcury(cds->trc_pad);
@@ -113,6 +123,19 @@ static void debug_trace_append(struct curses_debugger_state *cds,
 	doupdate();
 }
 
+static inline void debug_trace_rewind(struct curses_debugger_state *cds)
+{
+	wmove(cds->trc_pad, getcury(cds->trc_pad), 0);
+	wclrtoeol(cds->trc_pad);
+}
+
+// print a line, and commit
+#define debug_trace_printf(cds,fmt,a...) ({ \
+		__debug_trace_printf(cds, fmt, ##a); \
+		debug_trace_commit(cds); \
+	})
+
+// scroll pad up/down
 static void debug_trace_scroll(struct curses_debugger_state *cds, int lines)
 {
 	//beep();
@@ -126,14 +149,16 @@ static void debug_trace_scroll(struct curses_debugger_state *cds, int lines)
 // tracer
 
 #define DUMP_HDR "TIME(d)  ---A ---B ---C ---X ---Y ---Z ---I ---J   --PC --SP --EX --IA  SK  OP------------- ISN------------------------------\n"
-#define Ft  RSTCLR     "%04x" CLR(B,BLACK) "(" CLR(N,GREEN) "%ld" CLR(B,BLACK) ")"
-#define Fr  "%s"       "%04x" RSTCLR
-#define Fsk CLR(B,RED) "%s"   RSTCLR
-#define DUMP_FMT Ft"  "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr" "Fr"   "Fr" "Fr" "Fr" "Fr"  "Fsk RSTCLR "  %-15s %s\n"
 
 static void dump_header(struct curses_debugger_state *cds)
 {
-	debug_trace_append(cds, DUMP_HDR);
+	debug_trace_rewind(cds);
+
+	init_pair(54, COLOR_WHITE, COLOR_BLACK);
+
+	wattrset(cds->trc_pad, COLOR_PAIR(54)|A_BOLD);
+
+	debug_trace_printf(cds, DUMP_HDR);
 }
 
 /* this function dumps registers using ANSI colour codes */
@@ -143,6 +168,7 @@ static void dump_oneline(struct dcpu_vcpu *vcpu,
 {
 	char hex_buf[1024];
 	char asm_buf[1024];
+	int i;
 
 	dcpu_generate_hex(hex_buf, sizeof(hex_buf),
 			dcpu_vcpu_current_op(vcpu));
@@ -150,47 +176,74 @@ static void dump_oneline(struct dcpu_vcpu *vcpu,
 	dcpu_generate_asm(asm_buf, sizeof(asm_buf),
 			dcpu_vcpu_current_op(vcpu));
 
-	// macro to colourize a register
-#define Dr(reg) \
-	/* colour first */                          \
-	(!old)                    ? CLR(N,WHITE) :  \
-	(vcpu->st.reg < old->reg) ? CLR(B,RED) :    \
-	(vcpu->st.reg > old->reg) ? CLR(B,GREEN) :  \
-				    CLR(N,WHITE),   \
-	/* then the register value */               \
-	vcpu->st.reg
+	init_pair(54, COLOR_WHITE, COLOR_BLACK);
+	init_pair(55, COLOR_BLACK, COLOR_BLACK);
+	init_pair(56, COLOR_GREEN, COLOR_BLACK);
+	init_pair(57, COLOR_RED,   COLOR_BLACK);
 
-	// another macro to colourize PC and IA, when they match
-#define Ddup(reg, reg2) \
-	/* colour first */                          \
-	(vcpu->st.reg2 && vcpu->st.reg == vcpu->st.reg2) \
-	                          ? CLR(B,YELLOW) : \
-	(!old)                    ? CLR(N,WHITE) :  \
-	(vcpu->st.reg < old->reg) ? CLR(B,RED) :    \
-	(vcpu->st.reg > old->reg) ? CLR(B,GREEN) :  \
-				    CLR(N,WHITE),   \
-	/* then the register value */               \
-	vcpu->st.reg
+#define Creset   wattrset(cds->trc_pad, COLOR_PAIR(54))
+#define Cdark    wattrset(cds->trc_pad, COLOR_PAIR(55)|A_BOLD)
+#define Cbold    wattrset(cds->trc_pad, COLOR_PAIR(54)|A_BOLD)
 
-	debug_trace_append(cds, DUMP_FMT,
-			(dcpu_word)vcpu->st.cycles,
-			old ? vcpu->st.cycles - old->cycles : 0,
-			Dr(gr.a),
-			Dr(gr.b),
-			Dr(gr.c),
-			Dr(gr.x),
-			Dr(gr.y),
-			Dr(gr.z),
-			Dr(gr.i),
-			Dr(gr.j),
-			Ddup(sr.pc, sr.ia),
-			Dr(sr.sp),
-			Dr(sr.ex),
-			Ddup(sr.ia, sr.pc),
-			vcpu->st.skipping ? "sk" : "  ",
+#define Cgreen   wattrset(cds->trc_pad, COLOR_PAIR(56)|A_BOLD)
+#define Cred     wattrset(cds->trc_pad, COLOR_PAIR(57)|A_BOLD)
+
+	debug_trace_rewind(cds);
+
+	Cbold;  __debug_trace_printf(cds, "%04x", (dcpu_word)vcpu->st.cycles);
+	Cdark;  __debug_trace_addstr(cds, "(");
+	Creset; __debug_trace_printf(cds, "%lu",
+			old ? vcpu->st.cycles - old->cycles : 0);
+	Cdark;  __debug_trace_addstr(cds, ")");
+	Creset; __debug_trace_addstr(cds, "  ");
+
+	for (i=0; i<DCPU_NUM_REGS; i++) {
+		if (!old)
+			Creset;
+		else if (vcpu->st.gr.n[i] < old->gr.n[i])
+			Cred;
+		else if (vcpu->st.gr.n[i] > old->gr.n[i])
+			Cgreen;
+		else
+			Creset;
+		
+		__debug_trace_printf(cds, "%04x", vcpu->st.gr.n[i]);
+		Creset;
+		__debug_trace_addstr(cds, " ");
+	}
+
+	__debug_trace_addstr(cds, "  ");
+
+	for (i=0; i<DCPU_NUM_SREGS; i++) {
+		if (!old)
+			Creset;
+		else if (vcpu->st.sr.n[i] < old->sr.n[i])
+			Cred;
+		else if (vcpu->st.sr.n[i] > old->sr.n[i])
+			Cgreen;
+		else
+			Creset;
+		
+		__debug_trace_printf(cds, "%04x", vcpu->st.sr.n[i]);
+		Creset;
+		__debug_trace_addstr(cds, " ");
+	}
+
+	if (vcpu->st.skipping) {
+		__debug_trace_addstr(cds, " ");
+		Cred;
+		__debug_trace_addstr(cds, "sk");
+
+		Creset;
+		__debug_trace_addstr(cds, "  ");
+	} else {
+		__debug_trace_addstr(cds, "     ");
+	}
+
+	Cbold;
+	debug_trace_printf(cds, "%-15s %s\n",
 			hex_buf, asm_buf);
 }
-
 
 
 // handle change
@@ -212,9 +265,26 @@ static int dcpu_curses_anything(struct dcpu_vcpu *vcpu)
 	return 0;
 }
 
+static int dcpu_curses_halt(struct dcpu_vcpu *vcpu)
+{
+	struct curses_debugger_state *cds = &curses_debugger_state;
+
+	init_pair(53, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(54, COLOR_WHITE,  COLOR_BLACK);
+
+	debug_trace_rewind(cds);
+
+	wattrset(cds->trc_pad, COLOR_PAIR(53)|A_BOLD);
+	debug_trace_printf(cds, "Execution halted.\n");
+	wattrset(cds->trc_pad, COLOR_PAIR(54));
+
+	return -EFAULT;
+}
+
 static struct dcpu_vcpu_debug_ops curses_ops = {
 	.post_isn = dcpu_curses_anything,
 	.post_int = dcpu_curses_anything,
+	.halt     = dcpu_curses_halt,
 };
 
 // ------------------------------------------------------------------------
@@ -390,7 +460,7 @@ static int debug_shell(struct curses_debugger_state *cds)
 		case UPUT_EXIT_ENTER:
 			c = debug_shell_command_find(cmd);
 			if (!c) {
-				debug_trace_append(cds,
+				debug_trace_printf(cds,
 					"unknown command in '%s'\n", cmd);
 				break;
 			}
@@ -413,7 +483,7 @@ static int debug_shell(struct curses_debugger_state *cds)
 		case UPUT_EXIT_ESCAPE:
 		case UPUT_EXIT_TAB:
 		case UPUT_EXIT_SHIFT_TAB:
-			debug_trace_append(cds, "# rc=%u\n", rc);
+			debug_trace_printf(cds, "# rc=%u\n", rc);
 			break;
 
 		default:

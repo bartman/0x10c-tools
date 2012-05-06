@@ -21,13 +21,14 @@ struct dcpu_vcpu_ops {
 };
 
 struct dcpu_vcpu_debug_ops {
-
 	// instruction executed
 	int (*post_isn)(struct dcpu_vcpu *);
 
 	// interrupt changed PC
 	int (*post_int)(struct dcpu_vcpu *);
 
+	// halted
+	int (*halt)(struct dcpu_vcpu *);
 };
 
 struct dcpu_vcpu {
@@ -41,9 +42,9 @@ struct dcpu_vcpu {
 			};
 		} gr;
 		union {
-			dcpu_word n[4];
+			dcpu_word n[DCPU_NUM_SREGS];
 			struct {
-				dcpu_word sp, pc, ex, ia;
+				dcpu_word pc, sp, ex, ia;
 			};
 		} sr;
 
