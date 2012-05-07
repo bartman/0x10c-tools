@@ -14,5 +14,7 @@ extern void insert(char *, const char*, const int);
 #define UPUT_EXIT_DOWN_ARROW 2
 #define UPUT_EXIT_TAB        6
 #define UPUT_EXIT_SHIFT_TAB  4
+#define UPUT_EXIT_PAGE_UP    9
+#define UPUT_EXIT_PAGE_DOWN  3
 
 #endif // __included_uput_h__

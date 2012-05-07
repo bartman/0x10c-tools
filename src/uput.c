@@ -55,12 +55,12 @@ int uput(const int y,const int x,const int length,const int fg,const int bg,char
 |                                      +-----------------------------------+
 | ESCAPE     -> keyflag = 5            |The values are based on the KEYPAD!|
 | ENTER      -> keyflag = 0            +--------------+--------+-----------+
-| UP ARROW   -> keyflag = 8            |       (7)    | UP(8)  | (9)       |
+| UP ARROW   -> keyflag = 8            |       (7)    | UP(8)  | PG UP(9)  |
 | DOWN ARROW -> keyflag = 2            +--------------+--------+-----------+
 | TAB        -> keyflag = 6            |   SHFT-TAB(4)| ESC(5) |TAB(6)     |
 | SHIFT-TAB  -> keyflag = 4            +--------------+--------+-----------+
-|                                      |       (1)    | DOWN(2)|  (3)      |
-|                                      +--------------+--------+-----------|
+| PAGE UP    -> keyflag = 9            |       (1)    | DOWN(2)| PG DN(3)  |
+| PAGE DOWN  -> keyflag = 3            +--------------+--------+-----------|
 |                                      |    ENTER(0)  |                    |
 +--------------------------------------+-----------------------------------+
 Requires rtrim() and insert() functions
@@ -173,6 +173,14 @@ COLORS WITH BOLD ATTRIBUTE SET (Foreground only)
                                 flag=UPUT_EXIT_DOWN_ARROW;
                                 exitflag=true;
                                 break;
+			case KEY_PPAGE: // page-up
+				flag=UPUT_EXIT_PAGE_UP;
+				exitflag=true;
+				break;
+			case KEY_NPAGE: // page-down
+				flag=UPUT_EXIT_PAGE_DOWN;
+				exitflag=true;
+				break;
                         case 9: // tab
                                 flag=UPUT_EXIT_TAB;
                                 exitflag=true;
