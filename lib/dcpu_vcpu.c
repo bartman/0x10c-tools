@@ -84,9 +84,11 @@ static dcpu_word * dcpu_vcpu_get_isn_arg(struct dcpu_vcpu *vcpu,
 		return vcpu->ram + ofs;
 
 	case DCPU_REG_SP:
+		return &vcpu->st.sr.sp;
 	case DCPU_REG_PC:
+		return &vcpu->st.sr.pc;
 	case DCPU_REG_EX:
-		return &vcpu->st.sr.n[arg_desc - DCPU_REG_SP];
+		return &vcpu->st.sr.ex;
 
 	case DCPU_MREF_NEXT_WORD:
 		ofs = dcpu_vcpu_advance_pc_word(vcpu);
