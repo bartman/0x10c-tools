@@ -22,7 +22,7 @@
 
 #define REGS_COLS 20
 #define CMD_ROWS 3
-#define TRACE_LINES 100 //1000
+#define TRACE_LINES 10000
 
 #define CTRL(x) ((x) & 0x1f)
 
@@ -35,7 +35,7 @@ struct curses_debugger_state {
 	WINDOW *mem;
 	WINDOW *trc;
 	WINDOW *trc_pad;
-	unsigned trc_top_line;
+	long trc_top_line;
 
 	struct {
 		struct dcpu_vcpu *vcpu;
@@ -104,10 +104,10 @@ static void debug_trace_commit(struct curses_debugger_state *cds)
 
 	// figure out what to show
 	pcury = getcury(cds->trc_pad);
-	if (pcury > vmaxy) {
-		int top_line_max = TRACE_LINES - vmaxy - 2;
-		if (cds->trc_top_line <= top_line_max)
-			cds->trc_top_line ++;
+	if (pcury <= vmaxy) {
+		cds->trc_top_line = 0;
+	} else {
+		cds->trc_top_line = pcury - vmaxy;
 	}
 
 	// copy the visible part of the pad into trace window
@@ -138,8 +138,39 @@ static inline void debug_trace_rewind(struct curses_debugger_state *cds)
 // scroll pad up/down
 static void debug_trace_scroll(struct curses_debugger_state *cds, int lines)
 {
-	//beep();
-	flash();
+	int vbegy, vbegx, vmaxy, vmaxx;
+	int top_line, top_min, top_max;
+
+	vmaxy = getmaxy(cds->trc);
+
+	top_min = 0;
+	top_max = TRACE_LINES - vmaxy - 1;
+
+	top_line = cds->trc_top_line + lines;
+
+	top_line = top_line < top_min ? top_min : top_line;
+	top_line = top_line > top_max ? top_max : top_line;
+
+	if (top_line == cds->trc_top_line) {
+		//beep();
+		flash();
+	} else {
+		cds->trc_top_line = top_line;
+
+		getbegyx(cds->trc, vbegy, vbegx);
+		getmaxyx(cds->trc, vmaxy, vmaxx);
+
+		werase(cds->trc);
+		wnoutrefresh(cds->trc);
+		pnoutrefresh(cds->trc_pad,
+				/* start in pad */
+				cds->trc_top_line, 0,
+				/* where to place */
+				vbegy, vbegx,
+				vbegy+vmaxy-1, vbegx+vmaxx-1);
+
+		doupdate();
+	}
 }
 
 
@@ -478,6 +509,14 @@ static int debug_shell(struct curses_debugger_state *cds)
 
 		case UPUT_EXIT_DOWN_ARROW:
 			debug_trace_scroll(cds, 1);
+			break;
+
+		case UPUT_EXIT_PAGE_UP:
+			debug_trace_scroll(cds, LINES/-2);
+			break;
+
+		case UPUT_EXIT_PAGE_DOWN:
+			debug_trace_scroll(cds, LINES/2);
 			break;
 
 		case UPUT_EXIT_ESCAPE:
